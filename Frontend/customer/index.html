@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kurnia Rental - Customer</title>
+  <link rel="stylesheet" href="/customer/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<div class="customer-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h2><span>Kurnia</span> Rental</h2>
+      <p>Customer Panel</p>
+    </div>
+    <div class="sidebar-user" id="sidebar-user" onclick="handleSidebarUserClick()" style="cursor:pointer;">
+      <div class="profile-avatar"><i class="fa-solid fa-user"></i></div>
+      <div>
+        <p class="profile-label" id="sidebar-user-label">Customer</p>
+        <h3 id="profile-name">-</h3>
+        <p class="profile-subtitle" id="profile-email">-</p>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Menu</div>
+      <a href="#home" class="nav-item" id="nav-home"><i class="fa-solid fa-house"></i> Home</a>
+      <a href="#motor-list" class="nav-item" id="nav-pemesanan"><i class="fa-solid fa-motorcycle"></i> Pemesanan</a>
+      <a href="#riwayat" class="nav-item" id="nav-riwayat"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat</a>
+      <a href="#profil" class="nav-item" id="nav-profil"><i class="fa-solid fa-id-card"></i> Profil</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn btn-logout" id="sidebar-footer-btn" onclick="handleSidebarFooterClick()">
+        <i class="fa-solid fa-right-from-bracket" id="sidebar-footer-icon"></i> <span id="sidebar-footer-text">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="content-area">
+    <section class="hero hero-grid" id="home">
+      <div class="hero-copy">
+        <span class="eyebrow">KURNIA RENTAL</span>
+        <h1>Welcome, <span id="customer-name">Customer</span></h1>
+        <p id="customer-welcome">Segera lakukan pemesanan motor dengan proses yang cepat dan aman.</p>
+        <div class="hero-actions">
+          <button class="btn-pesan" onclick="openCekBooking()"><i class="fa-solid fa-search"></i> Cek Booking</button>
+          <a href="#motor-list" class="btn-secondary">Lihat Motor</a>
+        </div>
+      </div>
+      <div class="hero-panel">
+        <div class="stats-card">
+          <div class="stats-list">
+            <div><strong>1 Jam</strong><span>Rp 10.000</span></div>
+            <div><strong>6 Jam</strong><span>Rp 25.000</span></div>
+            <div><strong>12 Jam</strong><span>Rp 35.000</span></div>
+            <div><strong>24 Jam</strong><span>Rp 50.000</span></div>
+            <div><strong>3 Hari</strong><span>Rp 140.000</span></div>
+          </div>
+          <p style="margin-top:.6rem;font-size:.78rem;color:var(--text-muted,#64748b);">
+            Sewa &gt; 3 hari kembali ke tarif normal Rp 50.000/hari.
+          </p>
+        </div>
+        <div class="stats-card" id="info-card" style="margin-top:1rem;">
+          <h4 style="margin-bottom:.5rem;"><i class="fa-solid fa-circle-info"></i> Informasi</h4>
+          <div id="info-container">
+            <p style="font-size:.85rem;color:var(--text-muted,#64748b);">Memuat informasi...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="motor-list">
+      <div class="section-heading">
+        <div>
+          <h2 class="section-title">Daftar <span>Motor</span></h2>
+          <p class="section-subtitle">Motor tersedia untuk disewa. Klik tombol pesan untuk membuka form booking.</p>
+        </div>
+        <div class="search-card">
+          <input type="text" id="search-input" placeholder="Cari motor..." oninput="filterBySearch()" onkeydown="if(event.key==='Enter') filterBySearch()">
+          <button onclick="filterBySearch()"><i class="fa-solid fa-search"></i></button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="" onclick="setFilter(this, '')">Semua</button>
+        <button class="filter-btn" data-filter="tersedia" onclick="setFilter(this, 'tersedia')">
+          <i class="fa-solid fa-circle-check"></i> Tersedia
+        </button>
+        <button class="filter-btn" data-filter="disewa" onclick="setFilter(this, 'disewa')">
+          <i class="fa-solid fa-circle-dot"></i> Disewa
+        </button>
+      </div>
+
+      <div class="motor-grid" id="motor-grid">
+        <div class="loading-state" style="grid-column:1/-1;">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          <p>Memuat daftar motor...</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-card" id="riwayat">
+      <div class="history-header">
+        <div>
+          <h2 class="section-title">Riwayat <span>Booking</span></h2>
+          <p class="section-subtitle">Semua pesanan yang pernah kamu buat.</p>
+        </div>
+        <button class="filter-btn" onclick="loadRiwayat()"><i class="fa-solid fa-arrows-rotate"></i> Muat Ulang</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="text-align:left;border-bottom:2px solid var(--border,#e2e8f0);">
+              <th style="padding:.6rem .5rem;">#</th>
+              <th style="padding:.6rem .5rem;">Motor</th>
+              <th style="padding:.6rem .5rem;">Plat</th>
+              <th style="padding:.6rem .5rem;">Jenis Sewa</th>
+              <th style="padding:.6rem .5rem;">Tanggal / Jam</th>
+              <th style="padding:.6rem .5rem;">Total</th>
+              <th style="padding:.6rem .5rem;">Denda</th>
+              <th style="padding:.6rem .5rem;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="riwayat-tbody">
+            <tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--text-muted,#64748b);">
+              <i class="fa-solid fa-spinner fa-spin"></i> Memuat riwayat...
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section section-card" id="profil">
+      <h2 class="section-title">Profil <span>Customer</span></h2>
+      <form id="profile-edit-form" class="profile-box" onsubmit="return false;">
+        <div>
+          <p class="profile-label">Nama Lengkap</p>
+          <input type="text" id="p-nama" class="form-control">
+        </div>
+        <div>
+          <p class="profile-label">Tanggal Lahir</p>
+          <input type="date" id="p-lahir" class="form-control">
+        </div>
+        <div>
+          <p class="profile-label">Jenis Kelamin</p>
+          <select id="p-jk" class="form-control">
+            <option value="">Pilih jenis kelamin</option>
+            <option value="Laki-Laki">Laki-Laki</option>
+            <option value="Perempuan">Perempuan</option>
+          </select>
+        </div>
+        <div>
+          <p class="profile-label">Telepon</p>
+          <input type="tel" id="p-hp" class="form-control">
+        </div>
+        <div style="grid-column:1/-1;">
+          <p class="profile-label">Alamat</p>
+          <input type="text" id="p-alamat" class="form-control">
+        </div>
+      </form>
+      <div style="display:flex;gap:.75rem;margin-top:1.25rem;flex-wrap:wrap;">
+        <button class="btn-pesan" onclick="saveProfileEdit()">
+          <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan
+        </button>
+        <button class="filter-btn" style="color:var(--danger,#ef4444);border-color:var(--danger,#ef4444);" onclick="confirmDeleteAccount()">
+          <i class="fa-solid fa-trash"></i> Hapus Akun Saya
+        </button>
+      </div>
+    </section>
+
+    <footer>
+      <p>&copy; 2026 <strong>Kurnia Rental</strong> — Jasa Sewa Motor Terpercaya</p>
+      <p>Hubungi kami: 08xxxxxxxxxx</p>
+    </footer>
+  </main>
+</div>
+
+<div class="modal-overlay" id="modal-booking">
+  <div class="modal">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-calendar-plus"></i> Form Booking Motor</h3>
+      <button class="btn-close" onclick="closeBooking()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box">
+        <strong id="booking-motor-name">-</strong>
+      </div>
+      <input type="hidden" id="booking-motor-id">
+      <input type="hidden" id="booking-motor-harga">
+
+      <div class="info-box" id="booking-customer-summary" style="margin-top:0.75rem;">
+        <strong>Data Pemesan</strong>
+        <span id="booking-customer-text">-</span>
+      </div>
+      <input type="hidden" id="b-nama">
+      <input type="hidden" id="b-hp">
+      <input type="hidden" id="b-email">
+
+      <h4>Jenis Sewa</h4>
+      <div class="sewa-tabs">
+        <button type="button" class="sewa-tab active" id="tab-harian" onclick="setJenisSewa('harian')">
+          <i class="fa-solid fa-calendar-days"></i> Per Hari
+        </button>
+        <button type="button" class="sewa-tab" id="tab-paket" onclick="setJenisSewa('paket')">
+          <i class="fa-solid fa-clock"></i> Per Jam
+        </button>
+      </div>
+
+      <div id="panel-harian">
+        <h4>Tanggal Sewa</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tanggal Mulai *</label>
+            <input type="date" id="b-mulai" class="form-control" onchange="hitungHarga()">
+          </div>
+          <div class="form-group">
+            <label>Tanggal Selesai *</label>
+            <input type="date" id="b-selesai" class="form-control" onchange="hitungHarga()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Jam Mulai (opsional)</label>
+            <input type="time" id="b-harian-jam-mulai" class="form-control" onchange="hitungHarga()">
+          </div>
+          <div class="form-group">
+            <label>Jam Selesai (opsional)</label>
+            <input type="time" id="b-harian-jam-selesai" class="form-control" onchange="hitungHarga()">
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-paket" style="display:none;">
+        <h4>Waktu Sewa</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tanggal Sewa *</label>
+            <input type="date" id="b-paket-tanggal" class="form-control" onchange="hitungHarga()">
+          </div>
+          <div class="form-group">
+            <label>Jam Mulai *</label>
+            <input type="time" id="b-paket-jam" class="form-control" onchange="hitungHarga()">
+          </div>
+          <div class="form-group">
+            <label>Jam Selesai *</label>
+            <input type="time" id="b-paket-jam-selesai" class="form-control" onchange="hitungHarga()">
+          </div>
+        </div>
+        <p style="font-size:.8rem;color:var(--text-muted,#64748b);">
+          Tarif akan dihitung otomatis sesuai lama pemakaian (mis. 1 jam Rp 10.000, 6 jam Rp 25.000, dst).
+          Jika jam selesai lebih kecil dari jam mulai, sewa dianggap lanjut ke hari berikutnya.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label>Catatan (opsional)</label>
+        <textarea id="b-catatan" class="form-control" rows="2" placeholder="Antar ke lokasi, dll..."></textarea>
+      </div>
+
+      <div class="summary-box" id="summary-box" style="display:none;">
+        <div class="summary-row" id="row-durasi">
+          <span>Durasi sewa:</span>
+          <span id="s-hari">-</span>
+        </div>
+        <div class="summary-row" id="row-harga-hari">
+          <span>Harga per hari:</span>
+          <span id="s-harga-hari">-</span>
+        </div>
+        <div class="summary-row summary-total">
+          <span>Total Biaya:</span>
+          <span id="s-total">-</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="filter-btn" onclick="closeBooking()">Batal</button>
+      <button class="btn-pesan" id="btn-submit-booking" onclick="submitBooking()">
+        <i class="fa-solid fa-paper-plane"></i> Kirim Booking
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-cek">
+  <div class="modal">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-magnifying-glass"></i> Cek Status Booking</h3>
+      <button class="btn-close" onclick="closeCekBooking()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Masukkan Nomor HP kamu</label>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <input type="tel" id="cek-hp" class="form-control" placeholder="08xx...">
+          <button class="btn-pesan" style="white-space:nowrap;" onclick="cekBooking()">
+            <i class="fa-solid fa-search"></i> Cek
+          </button>
+        </div>
+      </div>
+      <div id="booking-results"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/customer/js/script.js"></script>
+<script>
+  function getCustomerInfo() {
+    const email = localStorage.getItem('kurnia_customer_email');
+    const raw = localStorage.getItem('kurnia_customer_data');
+    return { email, data: raw ? JSON.parse(raw) : null };
+  }
+
+  function isLoggedIn() {
+    const { email, data } = getCustomerInfo();
+    return !!(email && data);
+  }
+
+  // Dipanggil sebelum aksi yang WAJIB login (pesan motor, riwayat, profil).
+  // Kalau belum login, arahkan ke halaman login dan kasih tahu alasannya.
+  function requireLogin(message) {
+    if (isLoggedIn()) return true;
+    showToast(message || 'Silakan login dulu untuk melanjutkan', 'error');
+    setTimeout(() => { location.href = '/customer/login.html'; }, 900);
+    return false;
+  }
+
+  function handleSidebarUserClick() {
+    if (!isLoggedIn()) location.href = '/customer/login.html';
+    else location.hash = '#profil';
+  }
+
+  function handleSidebarFooterClick() {
+    if (isLoggedIn()) logoutCustomer();
+    else location.href = '/customer/login.html';
+  }
+
+  // Halaman ini BISA dibuka tanpa login (mode tamu) — cuma "lihat-lihat" motor.
+  // Aksi seperti pesan, riwayat, dan profil baru minta login saat dipakai.
+  function initCustomerSession() {
+    if (isLoggedIn()) {
+      const { email, data } = getCustomerInfo();
+      // Kalau login tapi profil belum lengkap, arahkan lengkapi data dulu
+      if (!data || !data.nama) return location.replace('/customer/data');
+
+      const firstName = (data.nama || 'Customer').split(' ')[0] || 'Customer';
+      document.getElementById('customer-name').textContent = firstName;
+      document.getElementById('customer-welcome').textContent = `Halo ${firstName}, mari pesan motor yang kamu butuhkan hari ini.`;
+      document.getElementById('sidebar-user-label').textContent = 'Customer';
+      document.getElementById('profile-name').textContent = data.nama;
+      document.getElementById('profile-email').textContent = email;
+      document.getElementById('p-nama').value   = data.nama || '';
+      document.getElementById('p-lahir').value  = data.lahir || '';
+      document.getElementById('p-jk').value     = data.jk || '';
+      document.getElementById('p-hp').value     = data.hp || '';
+      document.getElementById('p-alamat').value = data.alamat || '';
+
+      document.getElementById('sidebar-footer-icon').className = 'fa-solid fa-right-from-bracket';
+      document.getElementById('sidebar-footer-text').textContent = 'Logout';
+    } else {
+      document.getElementById('customer-name').textContent = 'Tamu';
+      document.getElementById('customer-welcome').textContent = 'Jelajahi motor kami — login untuk mulai pesan.';
+      document.getElementById('sidebar-user-label').textContent = 'Belum login';
+      document.getElementById('profile-name').textContent = 'Tamu';
+      document.getElementById('profile-email').textContent = 'Klik untuk login / daftar';
+
+      document.getElementById('sidebar-footer-icon').className = 'fa-solid fa-right-to-bracket';
+      document.getElementById('sidebar-footer-text').textContent = 'Login';
+    }
+  }
+
+  async function saveProfileEdit() {
+    const { email } = getCustomerInfo();
+    const payload = {
+      email,
+      nama:   document.getElementById('p-nama').value.trim(),
+      lahir:  document.getElementById('p-lahir').value,
+      jk:     document.getElementById('p-jk').value,
+      hp:     document.getElementById('p-hp').value.trim(),
+      alamat: document.getElementById('p-alamat').value.trim(),
+    };
+    if (!payload.nama || !payload.hp) {
+      return showToast('Nama dan nomor HP wajib diisi', 'error');
+    }
+    try {
+      const res  = await fetch('/api/customer/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      showToast(data.message, data.success ? 'success' : 'error');
+      if (data.success && data.data) {
+        localStorage.setItem('kurnia_customer_data', JSON.stringify(data.data));
+        initCustomerSession();
+      }
+    } catch (err) {
+      console.error('Gagal menyimpan profil:', err);
+      showToast('Gagal menyimpan perubahan profil', 'error');
+    }
+  }
+
+  async function confirmDeleteAccount() {
+    if (!confirm('Yakin ingin menghapus akun kamu? Semua riwayat booking juga akan terhapus dan tidak bisa dikembalikan.')) return;
+    const { email } = getCustomerInfo();
+    try {
+      const res  = await fetch('/api/customer/account', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Akun berhasil dihapus', 'success');
+        setTimeout(logoutCustomer, 800);
+      } else {
+        showToast(data.message || 'Gagal menghapus akun', 'error');
+      }
+    } catch (err) {
+      console.error('Gagal menghapus akun:', err);
+      showToast('Gagal menghapus akun', 'error');
+    }
+  }
+
+  async function loadRiwayat() {
+    const tbody = document.getElementById('riwayat-tbody');
+    const { email, data } = getCustomerInfo();
+    const hp = data ? data.hp : '';
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--text-muted,#64748b);"><i class="fa-solid fa-spinner fa-spin"></i> Memuat riwayat...</td></tr>`;
+    try {
+      const params = new URLSearchParams();
+      if (email) params.set('email', email);
+      if (hp) params.set('no_hp', hp);
+      const res  = await fetch(`/api/customer/riwayat?${params.toString()}`);
+      if (!res.ok) throw new Error(`Server merespons status ${res.status}`);
+      const result = await res.json();
+      if (!result.success) throw new Error(result.message || 'Gagal memuat riwayat');
+      const list = result.data || [];
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--text-muted,#64748b);">Belum ada riwayat booking.</td></tr>`;
+        return;
+      }
+      const statusLabel = {
+        pending: 'Menunggu Konfirmasi', dikonfirmasi: 'Dikonfirmasi',
+        selesai: 'Selesai', dibatalkan: 'Dibatalkan'
+      };
+      tbody.innerHTML = list.map((b, i) => `
+        <tr style="border-bottom:1px solid var(--border,#e2e8f0);">
+          <td style="padding:.6rem .5rem;">${i+1}</td>
+          <td style="padding:.6rem .5rem;"><strong>${b.nama_motor}</strong><br><small>${b.merk}</small></td>
+          <td style="padding:.6rem .5rem;">${b.plat_nomor || '-'}</td>
+          <td style="padding:.6rem .5rem;">${b.jenis_sewa === 'paket' ? 'Per Jam' : 'Per Hari'}</td>
+          <td style="padding:.6rem .5rem;font-size:.82rem;">
+            ${b.jenis_sewa === 'paket'
+              ? `${b.tanggal_mulai} ${b.jam_mulai||''} - ${b.jam_selesai||''}`
+              : `${b.tanggal_mulai}${b.jam_mulai ? ' '+b.jam_mulai : ''} s/d ${b.tanggal_selesai}${b.jam_selesai ? ' '+b.jam_selesai : ''}`}
+          </td>
+          <td style="padding:.6rem .5rem;">Rp ${Number(b.total_harga).toLocaleString('id-ID')}</td>
+          <td style="padding:.6rem .5rem;">${Number(b.denda) > 0 ? `Rp ${Number(b.denda).toLocaleString('id-ID')}` : '-'}</td>
+          <td style="padding:.6rem .5rem;">${statusLabel[b.status] || b.status}</td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      console.error('Gagal memuat riwayat:', err);
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--danger,#ef4444);">
+        Gagal memuat riwayat. <button class="filter-btn" onclick="loadRiwayat()">Coba Lagi</button>
+      </td></tr>`;
+    }
+  }
+
+  async function loadHomeInfo() {
+    const container = document.getElementById('info-container');
+    try {
+      const res  = await fetch('/api/info');
+      const data = await res.json();
+      const list = data.data || [];
+      if (!list.length) {
+        container.innerHTML = `<p style="font-size:.85rem;color:var(--text-muted,#64748b);">Belum ada informasi terbaru.</p>`;
+        return;
+      }
+      container.innerHTML = list.map(item => `
+        <p style="font-size:.85rem;margin-bottom:.4rem;"><i class="fa-solid fa-circle" style="font-size:.4rem;vertical-align:middle;color:var(--primary,#2563eb);"></i> ${item.isi}</p>
+      `).join('');
+    } catch (err) {
+      console.error('Gagal memuat informasi:', err);
+      container.innerHTML = `<p style="font-size:.85rem;color:var(--text-muted,#64748b);">Informasi tidak dapat dimuat.</p>`;
+    }
+  }
+
+  function logoutCustomer() {
+    localStorage.removeItem('kurnia_customer_email');
+    localStorage.removeItem('kurnia_customer_data');
+    location.replace('/customer');
+  }
+
+  initCustomerSession();
+  loadHomeInfo();
+
+  // show only the selected page content for customer navigation
+  (() => {
+    const pageMap = {
+      '#home': ['#home', '#cara-booking'],
+      '#motor-list': ['#motor-list'],
+      '#riwayat': ['#riwayat'],
+      '#profil': ['#profil'],
+    };
+    const allSections = ['#home', '#cara-booking', '#motor-list', '#riwayat', '#profil'];
+    const navMap = {
+      '#home': 'nav-home',
+      '#motor-list': 'nav-pemesanan',
+      '#riwayat': 'nav-riwayat',
+      '#profil': 'nav-profil',
+    };
+
+    function showPage(hash) {
+      let page = pageMap[hash] ? hash : '#home';
+
+      // Riwayat & Profil wajib login — tamu diarahkan ke halaman login
+      if ((page === '#riwayat' || page === '#profil') && !isLoggedIn()) {
+        requireLogin(page === '#riwayat'
+          ? 'Login dulu untuk melihat riwayat booking kamu'
+          : 'Login dulu untuk mengatur profil kamu');
+        page = '#home';
+        history.replaceState(null, '', '#home');
+      }
+
+      allSections.forEach(selector => {
+        const el = document.querySelector(selector);
+        if (!el) return;
+        el.style.display = pageMap[page].includes(selector) ? '' : 'none';
+      });
+      updateActiveNav(page);
+      if (page === '#riwayat') loadRiwayat();
+      if (page !== '#home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function updateActiveNav(hash) {
+      const id = navMap[hash] || navMap['#home'];
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      const el = document.getElementById(id);
+      if (el) el.classList.add('active');
+    }
+
+    window.addEventListener('hashchange', () => showPage(window.location.hash));
+    showPage(window.location.hash || '#home');
+  })();
+</script>
+</body>
+</html>

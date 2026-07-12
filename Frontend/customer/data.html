@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kurnia Rental - Data Diri</title>
+  <link rel="stylesheet" href="/customer/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="auth-page">
+  <div class="auth-shell">
+    <div class="auth-card auth-card--wide auth-card--step">
+      <div class="auth-brand">KURNIA RENTAL</div>
+      <h1>Data Diri</h1>
+      <p>Lengkapi data diri Anda untuk menyelesaikan pendaftaran customer.</p>
+      <p class="auth-note">Email terdaftar: <strong id="customer-email-display">-</strong></p>
+      <form id="data-form" class="auth-form auth-form--grid">
+        <label>Nama Lengkap</label>
+        <input type="text" id="d-nama" placeholder="Masukkan nama lengkap" required>
+        <label>Tanggal Lahir</label>
+        <input type="date" id="d-lahir" required>
+        <label>Jenis Kelamin</label>
+        <select id="d-jk" required>
+          <option value="">Pilih jenis kelamin</option>
+          <option value="Laki-Laki">Laki-Laki</option>
+          <option value="Perempuan">Perempuan</option>
+        </select>
+        <label>Alamat</label>
+        <input type="text" id="d-alamat" placeholder="Masukkan alamat lengkap" required>
+        <label>No Telephone</label>
+        <input type="tel" id="d-hp" placeholder="08xxxxxxxxxx" required>
+      </form>
+      <div class="auth-actions">
+        <button id="btn-data-next" type="button" class="btn-auth">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function initCustomerDataPage() {
+      const storedEmail = localStorage.getItem('kurnia_customer_email');
+      const storedCustomer = localStorage.getItem('kurnia_customer_data');
+      if (!storedEmail) {
+        window.location.replace('/customer');
+        return;
+      }
+      if (storedCustomer) {
+        window.location.replace('/customer/index.html#home');
+        return;
+      }
+
+      document.getElementById('customer-email-display').textContent = storedEmail;
+      try {
+        const res = await fetch(`/api/customer/profile?email=${encodeURIComponent(storedEmail)}`);
+        const result = await res.json().catch(() => ({}));
+        if (res.ok && result.success && result.data) {
+          const data = result.data;
+          const complete = data.nama && data.hp;
+          if (complete) {
+            localStorage.setItem('kurnia_customer_data', JSON.stringify(data));
+            window.location.replace('/customer/index.html#home');
+            return;
+          }
+          document.getElementById('d-nama').value = data.nama || '';
+          document.getElementById('d-lahir').value = data.lahir || '';
+          document.getElementById('d-jk').value = data.jk || '';
+          document.getElementById('d-alamat').value = data.alamat || '';
+          document.getElementById('d-hp').value = data.hp || '';
+        }
+      } catch (err) {
+        // ignore and let user complete data
+      }
+
+      document.getElementById('btn-data-next').addEventListener('click', async function() {
+        const nama = document.getElementById('d-nama').value.trim();
+        const lahir = document.getElementById('d-lahir').value;
+        const jk = document.getElementById('d-jk').value;
+        const alamat = document.getElementById('d-alamat').value.trim();
+        const hp = document.getElementById('d-hp').value.trim();
+        if (!nama || !lahir || !jk || !alamat || !hp) {
+          alert('Semua field wajib diisi.');
+          return;
+        }
+        const profile = { nama, lahir, jk, alamat, hp, email: storedEmail };
+        try {
+          const res = await fetch('/api/customer/profile', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(profile)
+          });
+          const result = await res.json().catch(() => ({}));
+          if (res.ok && result.success) {
+            const savedProfile = result.data || profile;
+            localStorage.setItem('kurnia_customer_data', JSON.stringify(savedProfile));
+            window.location.href = '/customer/index.html#home';
+          } else {
+            alert(result.message || 'Gagal menyimpan data. Coba lagi.');
+          }
+        } catch (err) {
+          alert('Gagal menyimpan data. Coba lagi.');
+        }
+      });
+    }
+
+    initCustomerDataPage();
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Environment & secrets — JANGAN PERNAH commit file ini
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
