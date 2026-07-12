@@ -1334,4 +1334,10 @@ footer strong {
   .search-card input {
     width: 100%;
   }
+
+  .paket-grid,
+  .sewa-tabs,
+  .profile-box {
+    grid-template-columns: 1fr;
+  }
 }

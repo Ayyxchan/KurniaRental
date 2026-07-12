@@ -32,8 +32,13 @@
 
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <h2><span>Kurnia</span> Rental</h2>
-    <p>Panel Administrator</p>
+    <div>
+      <h2><span>Kurnia</span> Rental</h2>
+      <p>Panel Administrator</p>
+    </div>
+    <button class="sidebar-close" aria-label="Tutup menu">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-label">Menu</div>
@@ -50,8 +55,12 @@
   </div>
 </aside>
 
+<!-- Overlay untuk menutup sidebar di layar kecil -->
+<div class="sidebar-overlay"></div>
+
 <div class="main">
   <div class="topbar">
+    <button class="menu-toggle" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
     <h1>Data Motor</h1>
     <button class="btn btn-primary" onclick="openModal()">
       <i class="fa-solid fa-plus"></i> Tambah Motor
@@ -405,6 +414,7 @@
 
   loadMotors();
 </script>
+<script src="/admin/js/sidebar.js"></script>
 </body>
 </html>
 

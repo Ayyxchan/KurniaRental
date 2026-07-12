@@ -27,9 +27,25 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
   width: var(--sidebar-w); height: 100vh; position: fixed;
   top: 0; left: 0; background: linear-gradient(180deg, #322911 0%, #241c0f 100%);
   display: flex; flex-direction: column; z-index: 100;
+  transition: transform .25s ease;
 }
+
+/* ---- Mobile topbar controls ---- */
+.menu-toggle {
+  display: none; background: none; border: none; cursor: pointer;
+  font-size: 1.25rem; color: var(--text); padding: .4rem .5rem; margin-right: .5rem;
+}
+.sidebar-close {
+  display: none; background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,.7); font-size: 1.1rem; margin-left: auto;
+}
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 90;
+}
+.sidebar-overlay.show { display: block; }
 .sidebar-logo {
   padding: 1.75rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,.12);
+  display: flex; align-items: center;
 }
 .sidebar-logo h2 { color: #fff7eb; font-size: 1.3rem; font-weight: 900; letter-spacing: .05em; }
 .sidebar-logo span { color: var(--accent); }
@@ -90,14 +106,15 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 /* ---- Table card ---- */
 .card {
   background: #fff8e8; border-radius: 18px; box-shadow: var(--card-shadow);
-  overflow: hidden;
+  overflow-x: auto; overflow-y: hidden;
 }
 .card-header {
   padding: 1.3rem 1.6rem; border-bottom: 1px solid rgba(229,217,197,.95);
   display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: .75rem;
 }
 .card-header h2 { font-size: 1rem; font-weight: 800; color: var(--text); letter-spacing: .01em; }
-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: .9rem; }
 thead th {
   background: #f8fafc; padding: .75rem 1rem; text-align: left;
   color: var(--text-muted); font-weight: 600; font-size: .75rem;
@@ -234,7 +251,53 @@ select.form-control { cursor: pointer; }
   padding: .9rem; border-radius: 12px; font-weight: 800;
 }
 
-/* ---- Responsive ---- */
+/* ============================================================
+   ---- Responsive ----
+   Tablet & laptop kecil (<=1024px): stats jadi 2 kolom
+   Tablet potret & HP besar (<=900px): sidebar berubah jadi
+     panel geser (off-canvas) yang dibuka lewat tombol hamburger
+   HP (<=600px): rapikan spacing, stats & form jadi 1 kolom
+   ============================================================ */
 @media (max-width: 1024px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  .sidebar-close { display: inline-flex; align-items: center; justify-content: center; }
+
+  .sidebar {
+    transform: translateX(-100%);
+    width: min(var(--sidebar-w), 82vw);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+
+  .main { margin-left: 0; }
+
+  .topbar {
+    padding: 1rem 1.1rem;
+  }
+  .topbar h1 { font-size: 1.15rem; }
+  .topbar-user span { display: none; }
+
+  .content { padding: 1rem; }
+}
+
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: 1fr; }
+
+  .card-header { padding: 1rem 1.1rem; }
+  .content { padding: .75rem; }
+
+  .form-row { grid-template-columns: 1fr; gap: 0; }
+
+  .modal { width: 94%; max-width: none; }
+  .modal-body, .modal-header, .modal-footer { padding-left: 1.1rem; padding-right: 1.1rem; }
+
+  .login-box { padding: 1.5rem 1.25rem; }
+  .login-logo h1 { font-size: 1.45rem; }
+
+  #toast {
+    left: 1rem; right: 1rem; bottom: 1rem; text-align: center;
+  }
 }
