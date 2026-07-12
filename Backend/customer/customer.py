@@ -33,11 +33,6 @@ def _record_attempt(key):
 TARIF_HARIAN = 50000
 DENDA_PER_JAM = 5000  # denda keterlambatan pengembalian motor, per jam kelebihan
 
-# Harga sewa per jam: titik "anchor" (harga paket khusus/diskon di jam tersebut),
-# dan di ANTARA anchor naik Rp5.000 setiap jam dari anchor terdekat di bawahnya.
-# Jadi: 1 jam=10rb, 2 jam=15rb, 3 jam=20rb, 4 jam=25rb, 5 jam=30rb,
-#       6 jam=25rb (anchor/harga paket sendiri, bukan hasil naik 5rb),
-#       7 jam=30rb, ... 11 jam=50rb, 12 jam=35rb (anchor lagi), dst.
 JAM_ANCHORS = [
     (1,  10000),
     (6,  25000),
@@ -424,7 +419,6 @@ def register_customer():
         }), 409
 
     try:
-        # Gunakan '-' sebagai placeholder untuk kolom NOT NULL (nama, no_hp)
         # Data lengkap akan diisi setelah customer melengkapi profil
         db.execute_query(
             "INSERT INTO customers (nama, no_hp, email, password_hash) VALUES (%s, %s, %s, %s)",

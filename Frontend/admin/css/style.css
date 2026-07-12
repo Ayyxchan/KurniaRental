@@ -251,13 +251,6 @@ select.form-control { cursor: pointer; }
   padding: .9rem; border-radius: 12px; font-weight: 800;
 }
 
-/* ============================================================
-   ---- Responsive ----
-   Tablet & laptop kecil (<=1024px): stats jadi 2 kolom
-   Tablet potret & HP besar (<=900px): sidebar berubah jadi
-     panel geser (off-canvas) yang dibuka lewat tombol hamburger
-   HP (<=600px): rapikan spacing, stats & form jadi 1 kolom
-   ============================================================ */
 @media (max-width: 1024px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
