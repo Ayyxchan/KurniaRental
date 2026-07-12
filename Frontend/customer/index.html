@@ -9,11 +9,20 @@
 </head>
 <body>
 
+<!-- Topbar mobile: cuma tampil di layar sempit, berisi tombol hamburger -->
+<div class="customer-mobile-topbar">
+  <button class="menu-toggle" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
+  <strong><span>Kurnia</span> Rental</strong>
+</div>
+
 <div class="customer-layout">
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <h2><span>Kurnia</span> Rental</h2>
-      <p>Customer Panel</p>
+      <div>
+        <h2><span>Kurnia</span> Rental</h2>
+        <p>Customer Panel</p>
+      </div>
+      <button class="sidebar-close" aria-label="Tutup menu"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="sidebar-user" id="sidebar-user" onclick="handleSidebarUserClick()" style="cursor:pointer;">
       <div class="profile-avatar"><i class="fa-solid fa-user"></i></div>
@@ -36,6 +45,9 @@
       </button>
     </div>
   </aside>
+
+  <!-- Overlay untuk menutup sidebar di layar kecil -->
+  <div class="sidebar-overlay"></div>
 
   <main class="content-area">
     <section class="hero hero-grid" id="home">
@@ -305,6 +317,7 @@
 <div id="toast"></div>
 
 <script src="/customer/js/script.js"></script>
+<script src="/customer/js/sidebar-toggle.js"></script>
 <script>
   function getCustomerInfo() {
     const email = localStorage.getItem('kurnia_customer_email');
