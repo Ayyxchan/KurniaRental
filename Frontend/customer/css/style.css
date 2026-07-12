@@ -489,6 +489,23 @@ textarea:focus {
   min-height: 100vh;
 }
 
+/* Overlay penutup sidebar mode HP/tablet. Wajib diatur di sini (di luar
+   media query) sama seperti di panel admin, supaya di ukuran laptop dia
+   tetap "display:none" dan tidak ikut jadi kolom ke-2 pada grid
+   .customer-layout (itu penyebab konten utama kegeser & kepotong di
+   bawah sidebar pada lebar layar tertentu). */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 90;
+}
+
+.sidebar-overlay.show {
+  display: block;
+}
+
 .sidebar {
   position: sticky;
   top: 0;
@@ -1321,18 +1338,6 @@ footer strong {
 
   .sidebar-close {
     display: inline-flex;
-  }
-
-  .sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    z-index: 90;
-  }
-
-  .sidebar-overlay.show {
-    display: block;
   }
 
   .hero {
