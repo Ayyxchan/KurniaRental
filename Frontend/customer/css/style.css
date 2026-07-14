@@ -489,23 +489,6 @@ textarea:focus {
   min-height: 100vh;
 }
 
-/* Overlay penutup sidebar mode HP/tablet. Wajib diatur di sini (di luar
-   media query) sama seperti di panel admin, supaya di ukuran laptop dia
-   tetap "display:none" dan tidak ikut jadi kolom ke-2 pada grid
-   .customer-layout (itu penyebab konten utama kegeser & kepotong di
-   bawah sidebar pada lebar layar tertentu). */
-.sidebar-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 90;
-}
-
-.sidebar-overlay.show {
-  display: block;
-}
-
 .sidebar {
   position: sticky;
   top: 0;
@@ -518,67 +501,9 @@ textarea:focus {
   color: #fff;
 }
 
-/* ---- Topbar mobile: cuma tampil di layar sempit (lihat media query) ---- */
-.customer-mobile-topbar {
-  display: none;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.9rem 1.1rem;
-  background: linear-gradient(180deg, #322911 0%, #241c0f 100%);
-  color: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 80;
-}
-
-.mobile-topbar-user {
-  margin-left: auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #241c0f;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.customer-mobile-topbar strong {
-  font-size: 1.05rem;
-  letter-spacing: 0.03em;
-}
-
-.customer-mobile-topbar strong span {
-  color: var(--accent);
-}
-
-.menu-toggle {
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0.3rem 0.4rem;
-}
-
-.sidebar-close {
-  display: none;
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 1.1rem;
-  cursor: pointer;
-  margin-left: auto;
-}
-
 .sidebar-logo {
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  align-items: flex-start;
 }
 
 .sidebar-logo h2 {
@@ -1295,11 +1220,13 @@ footer strong {
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none; /* Saat tidak terlihat, jangan sampai "menangkap" sentuhan/klik */
 }
 
 #toast.show {
   opacity: 1;
   transform: translateY(0);
+  pointer-events: auto;
 }
 
 #toast.success {
@@ -1327,32 +1254,12 @@ footer strong {
     grid-template-columns: 1fr;
   }
 
-  /* Sidebar berubah jadi panel geser (off-canvas) di layar sempit,
-     dibuka lewat tombol hamburger di topbar mobile, supaya tidak
-     langsung menumpuk penuh di atas konten seperti sebelumnya. */
-  .customer-mobile-topbar {
-    display: flex;
-  }
-
+  /* Sidebar "sticky" cuma masuk akal saat jadi kolom samping (layar lebar).
+     Begitu tumpukan jadi 1 kolom, sticky bikin sidebar menimpa konten saat
+     di-scroll — jadi di sini dibalikin ke posisi normal (static). */
   .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    width: min(280px, 82vw);
+    position: static;
     align-self: auto;
-    transform: translateX(-100%);
-    transition: transform 0.25s ease;
-    z-index: 100;
-    overflow-y: auto;
-  }
-
-  .sidebar.is-open {
-    transform: translateX(0);
-  }
-
-  .sidebar-close {
-    display: inline-flex;
   }
 
   .hero {
@@ -1428,11 +1335,5 @@ footer strong {
 
   .search-card input {
     width: 100%;
-  }
-
-  .paket-grid,
-  .sewa-tabs,
-  .profile-box {
-    grid-template-columns: 1fr;
   }
 }
