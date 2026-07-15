@@ -243,6 +243,44 @@
     };
   }
 
+  // ── Polling cadangan ──
+  // Di sebagian platform hosting (mis. Vercel), koneksi real-time (SSE) di atas
+  // tidak didukung dengan baik karena fungsinya otomatis berhenti setelah
+  // beberapa detik. Supaya data tetap ter-update walau begitu, kita cek data
+  // terbaru secara berkala di sini juga. Kalau SSE ternyata jalan normal
+  // (mis. di Render/VPS), ini cuma jadi lapisan tambahan yang tidak masalah.
+  let lastKnownBookingCount = null;
+  function startPollingFallback() {
+    setInterval(async () => {
+      try {
+        const res  = await fetch('/api/admin/bookings', {credentials:'include'});
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.success) return;
+        const list = data.data || [];
+        if (lastKnownBookingCount !== null && list.length > lastKnownBookingCount) {
+          // Ada booking baru yang masuk sejak pengecekan terakhir
+          const newest = list[0]; // data terbaru selalu di urutan pertama
+          addNotification({
+            booking_id: newest.id, nama: newest.nama_customer, motor: newest.nama_motor,
+            tanggal_mulai: newest.tanggal_mulai, tanggal_selesai: newest.tanggal_selesai,
+            total_harga: newest.total_harga
+          });
+          sendBrowserNotification(
+            `Booking baru dari ${newest.nama_customer}`,
+            `${newest.nama_motor} · Rp ${Number(newest.total_harga).toLocaleString('id-ID')}`
+          );
+        }
+        lastKnownBookingCount = list.length;
+        allBookings = list;
+        filterBookings();
+      } catch (err) {
+        console.error('Polling gagal:', err);
+      }
+    }, 15000); // cek tiap 15 detik
+  }
+  startPollingFallback();
+
   // ── Notifikasi ──
   function addNotification(data) {
     const notif = {

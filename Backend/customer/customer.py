@@ -9,6 +9,8 @@ import time
 import urllib.request
 import urllib.error
 import urllib.parse
+import dns.resolver
+from dns.resolver import NXDOMAIN, NoAnswer, NoNameservers
 
 customer_bp = Blueprint('customer', __name__)
 db = Database()
@@ -92,6 +94,45 @@ def get_customer_columns():
 def normalize_customer_email(email):
     email = (email or '').strip().lower()
     return email if email and '@' in email else ''
+
+
+# Domain populer yang jelas valid -> lewati pengecekan DNS (lebih cepat, lebih andal)
+_COMMON_EMAIL_DOMAINS = {
+    'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.id', 'ymail.com',
+    'outlook.com', 'hotmail.com', 'hotmail.co.id', 'live.com', 'msn.com',
+    'icloud.com', 'me.com', 'mac.com', 'proton.me', 'protonmail.com',
+}
+
+
+def domain_can_receive_email(email):
+    """Pengecekan ringan (tanpa kirim email beneran): domain di belakang '@'
+    harus punya MX/A record yang valid, artinya domain itu memang dikonfigurasi
+    untuk bisa menerima email. Ini TIDAK menjamin alamat spesifiknya benar-benar
+    ada/aktif, tapi cukup untuk menyaring domain ngasal/typo (mis. 'test@asalasal123xyz.com')."""
+    try:
+        domain = email.rsplit('@', 1)[1].strip().lower()
+    except IndexError:
+        return False
+    if not domain:
+        return False
+    if domain in _COMMON_EMAIL_DOMAINS:
+        return True
+
+    try:
+        answers = dns.resolver.resolve(domain, 'MX', lifetime=5)
+        return len(answers) > 0
+    except (NXDOMAIN, NoAnswer):
+        # Sebagian domain kecil tidak punya MX tapi tetap bisa terima email lewat A record (implicit MX)
+        try:
+            dns.resolver.resolve(domain, 'A', lifetime=5)
+            return True
+        except Exception:
+            return False
+    except NoNameservers:
+        return False
+    except Exception:
+        # Gangguan DNS sementara di server -> jangan sampai memblokir pendaftaran karena ini
+        return True
 
 
 def normalize_phone(phone):
@@ -403,6 +444,11 @@ def register_customer():
 
     if not email:
         return jsonify({'success': False, 'message': 'Email wajib diisi'}), 400
+    if not domain_can_receive_email(email):
+        return jsonify({
+            'success': False,
+            'message': 'Domain email tidak valid atau tidak bisa menerima email. Periksa kembali penulisan email kamu.'
+        }), 400
     if not password:
         return jsonify({'success': False, 'message': 'Password wajib diisi'}), 400
     if len(password) < 6:
