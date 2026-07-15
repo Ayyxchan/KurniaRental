@@ -287,6 +287,14 @@
     };
   }
 
+  // ── Polling cadangan ──
+  // Di sebagian platform hosting (mis. Vercel), SSE di atas tidak didukung
+  // dengan baik. Ini jaring pengaman supaya statistik tetap ter-update.
+  function startPollingFallback() {
+    setInterval(loadStats, 20000); // cek tiap 20 detik
+  }
+  startPollingFallback();
+
   function openLogoutConfirm() {
     document.getElementById('logout-confirm').classList.add('show');
   }

@@ -62,15 +62,44 @@ function connectSSE() {
 
   // Saat koneksi terbuka
   sseSource.onopen = () => {
-    showToast('Terkoneksi ke pembaruan real-time', 'success');
+    sseConnectedOnce = true;
   };
 
   sseSource.onerror = (err) => {
-    showToast('Koneksi update terputus, mencoba menyambung ulang...', 'error');
-    // Reconnect otomatis setelah 5 detik jika koneksi putus
+    // Di sebagian platform hosting (mis. Vercel), SSE memang tidak didukung
+    // dan akan selalu gagal — diamkan saja supaya tidak spam toast error
+    // berulang-ulang, cukup andalkan polling cadangan di bawah.
     setTimeout(connectSSE, 5000);
   };
 }
+
+// ── Polling cadangan ──
+// Jaring pengaman kalau SSE di atas tidak jalan (mis. di platform serverless
+// seperti Vercel yang memutus koneksi setelah beberapa detik). Data motor
+// tetap ter-update otomatis walau tanpa real-time push.
+let sseConnectedOnce = false;
+function startMotorPollingFallback() {
+  setInterval(async () => {
+    try {
+      const res = await fetch('/api/motors');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.success) return;
+      const fresh = data.data || [];
+      // Cek kalau ada status yang berubah dibanding data yang lagi ditampilkan
+      let changed = false;
+      fresh.forEach(fm => {
+        const existing = allMotors.find(m => m.id === fm.id);
+        if (existing && existing.status !== fm.status) changed = true;
+      });
+      allMotors = fresh;
+      if (changed) renderMotors();
+    } catch (err) {
+      console.error('Polling motor gagal:', err);
+    }
+  }, 15000); // cek tiap 15 detik
+}
+startMotorPollingFallback();
 
 function showStatusToast(d) {
   const statusLabel = {
