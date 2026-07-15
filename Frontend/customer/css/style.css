@@ -390,12 +390,40 @@ html {
 }
 
 .section-card {
-  background: var(--surface);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 1.75rem;
   box-shadow: 0 18px 36px rgba(58, 48, 26, 0.06);
 }
+
+.history-table thead th {
+  padding: .6rem .5rem;
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 2px solid var(--border);
+}
+
+.history-table tbody tr:hover { background: rgba(255, 255, 255, 0.5); }
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: .2rem .65rem;
+  border-radius: 99px;
+  font-size: .75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.status-badge.amber { background: #fef3c7; color: #92400e; }
+.status-badge.blue  { background: #dbeafe; color: #1e40af; }
+.status-badge.green { background: #d1fae5; color: #065f46; }
+.status-badge.red   { background: #fee2e2; color: #991b1b; }
+.status-badge.gray  { background: #f1f5f9; color: #475569; }
 
 button {
   border: none;

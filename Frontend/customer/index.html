@@ -129,17 +129,17 @@
         <button class="filter-btn" onclick="loadRiwayat()"><i class="fa-solid fa-arrows-rotate"></i> Muat Ulang</button>
       </div>
       <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;">
+        <table class="history-table" style="width:100%;border-collapse:collapse;">
           <thead>
-            <tr style="text-align:left;border-bottom:2px solid var(--border,#e2e8f0);">
-              <th style="padding:.6rem .5rem;">NO.</th>
-              <th style="padding:.6rem .5rem;">Motor</th>
-              <th style="padding:.6rem .5rem;">Plat</th>
-              <th style="padding:.6rem .5rem;">Jenis Sewa</th>
-              <th style="padding:.6rem .5rem;">Tanggal / Jam</th>
-              <th style="padding:.6rem .5rem;">Total</th>
-              <th style="padding:.6rem .5rem;">Denda</th>
-              <th style="padding:.6rem .5rem;">Status</th>
+            <tr>
+              <th>NO.</th>
+              <th>Motor</th>
+              <th>Plat</th>
+              <th>Jenis Sewa</th>
+              <th>Tanggal / Jam</th>
+              <th>Total</th>
+              <th>Denda</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="riwayat-tbody">
@@ -467,6 +467,10 @@
         pending: 'Menunggu Konfirmasi', dikonfirmasi: 'Dikonfirmasi',
         selesai: 'Selesai', dibatalkan: 'Dibatalkan'
       };
+      const statusColor = {
+        pending: 'amber', dikonfirmasi: 'blue',
+        selesai: 'green', dibatalkan: 'red'
+      };
       tbody.innerHTML = list.map((b, i) => `
         <tr style="border-bottom:1px solid var(--border,#e2e8f0);">
           <td style="padding:.6rem .5rem;">${i+1}</td>
@@ -478,9 +482,9 @@
               ? `${b.tanggal_mulai} ${b.jam_mulai||''} - ${b.jam_selesai||''}`
               : `${b.tanggal_mulai}${b.jam_mulai ? ' '+b.jam_mulai : ''} s/d ${b.tanggal_selesai}${b.jam_selesai ? ' '+b.jam_selesai : ''}`}
           </td>
-          <td style="padding:.6rem .5rem;">Rp ${Number(b.total_harga).toLocaleString('id-ID')}</td>
-          <td style="padding:.6rem .5rem;">${Number(b.denda) > 0 ? `Rp ${Number(b.denda).toLocaleString('id-ID')}` : '-'}</td>
-          <td style="padding:.6rem .5rem;">${statusLabel[b.status] || b.status}</td>
+          <td style="padding:.6rem .5rem;"><strong>Rp ${Number(b.total_harga).toLocaleString('id-ID')}</strong></td>
+          <td style="padding:.6rem .5rem;">${Number(b.denda) > 0 ? `<span style="color:var(--danger);font-weight:600;">Rp ${Number(b.denda).toLocaleString('id-ID')}</span>` : '-'}</td>
+          <td style="padding:.6rem .5rem;"><span class="status-badge ${statusColor[b.status]||'gray'}">${statusLabel[b.status] || b.status}</span></td>
         </tr>
       `).join('');
     } catch (err) {
