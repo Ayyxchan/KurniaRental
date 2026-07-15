@@ -55,11 +55,13 @@
     .sse-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
     .sse-dot.connected { background: var(--success); animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:.5; } }
+
+    @media (max-width: 480px) {
+      .sse-status span { display: none; } /* sisakan cuma titik indikator di layar sangat sempit */
+      .filter-status-select { width: 130px; }
+    }
   </style>
-</head>@media (max-width: 480px) {
-  .sse-status span { display: none; } /* sisakan cuma titik indikator di layar sangat sempit */
-  .filter-status-select { width: 130px; }
-}
+</head>
 <body>
 
 <aside class="sidebar">
