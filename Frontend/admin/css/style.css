@@ -84,6 +84,37 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
   font-size: .9rem; }
 .topbar-user i { color: var(--accent); }
 
+html, body {
+  /* Pengaman: kalau ada elemen manapun yang "bocor" lebih lebar dari layar,
+     jangan sampai bikin SELURUH halaman bisa di-scroll horizontal — itu yang
+     bikin elemen sticky (topbar) kelihatan seperti garisnya "putus"/tidak full,
+     dan juga bisa bikin tombol jadi susah ditekan di HP. */
+  overflow-x: hidden;
+}
+
+.topbar {
+  flex-wrap: wrap;
+  row-gap: .5rem;
+}
+
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.filter-status-select {
+  width: 170px;
+  max-width: 100%;
+}
+
+@media (max-width: 480px) {
+  .sse-status span { display: none; } /* sisakan cuma titik indikator di layar sangat sempit */
+  .filter-status-select { width: 130px; }
+}
+
 .content { padding: 1.5rem; }
 
 /* ---- Cards ---- */

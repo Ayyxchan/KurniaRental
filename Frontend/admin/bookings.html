@@ -56,7 +56,10 @@
     .sse-dot.connected { background: var(--success); animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:.5; } }
   </style>
-</head>
+</head>@media (max-width: 480px) {
+  .sse-status span { display: none; } /* sisakan cuma titik indikator di layar sangat sempit */
+  .filter-status-select { width: 130px; }
+}
 <body>
 
 <aside class="sidebar">
@@ -91,14 +94,14 @@
   <div class="topbar">
     <button class="menu-toggle" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
     <h1>Manajemen Booking</h1>
-    <div style="display:flex;align-items:center;gap:.75rem;">
+    <div class="topbar-controls">
       <!-- SSE status -->
       <div class="sse-status">
         <div class="sse-dot" id="sse-dot"></div>
         <span id="sse-label">Menghubungkan...</span>
       </div>
       <!-- Filter -->
-      <select id="filter-status" class="form-control" style="width:170px;" onchange="filterBookings()">
+      <select id="filter-status" class="form-control filter-status-select" onchange="filterBookings()">
         <option value="">Semua Status</option>
         <option value="pending">Pending</option>
         <option value="dikonfirmasi">Dikonfirmasi</option>
