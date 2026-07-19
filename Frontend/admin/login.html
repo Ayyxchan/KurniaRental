@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Admin - Kurnia Rental</title>
+  <link rel="stylesheet" href="/admin/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-icon"><i class="fa-solid fa-motorcycle"></i></div>
+      <p class="login-brand">Kurnia Rental</p>
+      <h1>Masuk Admin</h1>
+    </div>
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" class="form-control" placeholder="Masukkan username" autocomplete="username" autofocus>
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <div class="password-field">
+        <input type="password" id="password" class="form-control" placeholder="Masukkan password" autocomplete="current-password">
+        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1" aria-label="Lihat password">
+          <i class="fa-solid fa-eye"></i>
+        </button>
+      </div>
+    </div>
+    <p id="error-msg" class="login-error" style="display:none;"></p>
+    <button class="btn btn-primary" id="btn-login" onclick="doLogin()">
+      <i class="fa-solid fa-right-to-bracket"></i> Masuk Admin
+    </button>
+    <p class="login-note"><a href="/customer">Kembali ke login Customer</a></p>
+  </div>
+</div>
+
+<script>
+  function togglePasswordVisibility(btn) {
+    const input = btn.previousElementSibling;
+    const icon  = btn.querySelector('i');
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    icon.classList.toggle('fa-eye', showing);
+    icon.classList.toggle('fa-eye-slash', !showing);
+  }
+
+  // Jika sudah login, langsung ke dashboard
+  fetch('/api/admin/auth/check', {credentials:'include'})
+    .then(r => r.json())
+    .then(d => { if (d.logged_in) location.href = '/admin/dashboard.html'; })
+    .catch(() => {});
+
+  document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  async function doLogin() {
+    const btn = document.getElementById('btn-login');
+    const errEl = document.getElementById('error-msg');
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!username || !password) {
+      errEl.textContent = 'Username dan password wajib diisi.';
+      errEl.style.display = 'block'; return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        credentials: 'include',
+        body: JSON.stringify({username, password})
+      });
+      const data = await res.json();
+      if (data.success) {
+        location.href = '/admin/dashboard.html';
+      } else {
+        errEl.textContent = data.message;
+        errEl.style.display = 'block';
+      }
+    } catch(e) {
+      errEl.textContent = 'Gagal terhubung ke server.';
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk Admin';
+    }
+  }
+</script>
+</body>
+</html>

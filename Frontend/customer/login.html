@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Customer - Kurnia Rental</title>
+  <link rel="stylesheet" href="/customer/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body class="auth-page">
+  <div class="auth-shell">
+    <div class="auth-card login-compact">
+      <div class="auth-icon"><i class="fa-solid fa-motorcycle"></i></div>
+      <div class="auth-brand">Kurnia Rental</div>
+      <h1>Masuk Customer</h1>
+      <p class="auth-copy">Masuk dengan email terdaftar atau gunakan akun Google.</p>
+
+      <form id="email-login-form" class="auth-form" onsubmit="doEmailLogin(event)">
+        <input type="email" id="email" placeholder="Email terdaftar" autocomplete="email" required>
+        <div class="password-field">
+          <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1" aria-label="Lihat password">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+        <button type="submit" class="btn-auth" id="btn-email-login">
+          <i class="fa-solid fa-envelope"></i> Masuk dengan Email
+        </button>
+      </form>
+      <p id="auth-msg" class="auth-error" style="display:none;"></p>
+
+      <div class="auth-divider"><span>atau</span></div>
+
+      <div class="gsi-btn-wrap">
+        <div id="google-signin-container"></div>
+      </div>
+      <p id="google-config-msg" class="auth-error" style="display:none;"></p>
+
+      <p class="create-account-link">
+        Belum punya akun? <a href="/customer/register">Buat akun baru</a>
+      </p>
+
+      <div class="auth-footer-note">
+        <a href="/admin">Login sebagai Admin</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function togglePasswordVisibility(btn) {
+      const input = btn.previousElementSibling;
+      const icon  = btn.querySelector('i');
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      icon.classList.toggle('fa-eye', showing);
+      icon.classList.toggle('fa-eye-slash', !showing);
+    }
+    const storedCustomer = localStorage.getItem('kurnia_customer_data');
+    const storedEmail = localStorage.getItem('kurnia_customer_email');
+    let googleClientId = null;
+
+    function normalizeEmail(email) {
+      return (email || '').trim().toLowerCase();
+    }
+
+    function showMessage(elId, message) {
+      const el = document.getElementById(elId);
+      el.textContent = message;
+      el.style.display = message ? 'block' : 'none';
+    }
+
+    function redirectAfterLogin(email, data) {
+      localStorage.setItem('kurnia_customer_email', email);
+      if (data && data.nama && data.hp) {
+        localStorage.setItem('kurnia_customer_data', JSON.stringify(data));
+        window.location.href = '/customer/index.html#home';
+      } else {
+        localStorage.removeItem('kurnia_customer_data');
+        window.location.href = '/customer/data';
+      }
+    }
+
+    async function doEmailLogin(event) {
+      event.preventDefault();
+      const btn = document.getElementById('btn-email-login');
+      const email = normalizeEmail(document.getElementById('email').value);
+      const password = document.getElementById('password').value;
+      showMessage('auth-msg', '');
+
+      if (!email) {
+        showMessage('auth-msg', 'Email wajib diisi.');
+        return;
+      }
+      if (!password) {
+        showMessage('auth-msg', 'Password wajib diisi.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+
+      try {
+        const res = await fetch('/api/customer/email-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const result = await res.json();
+        if (!res.ok || !result.success) {
+          // Notifikasi login gagal
+          showMessage('auth-msg', result.message || 'Login gagal. Periksa kembali email dan password kamu.');
+          if (result.not_registered) {
+            showMessage('auth-msg', (result.message || 'Email belum terdaftar.') + ' Silakan buat akun baru.');
+          }
+          return;
+        }
+        redirectAfterLogin(result.email || email, result.data);
+      } catch (err) {
+        console.error('Login gagal:', err);
+        showMessage('auth-msg', 'Gagal terhubung ke server. Coba lagi.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-envelope"></i> Masuk dengan Email';
+      }
+    }
+
+    async function loadGoogleConfig() {
+      try {
+        const res = await fetch('/api/customer/google-config');
+        const json = await res.json();
+        if (res.ok && json.success && json.google_client_id) {
+          googleClientId = json.google_client_id;
+          initGoogleSignIn();
+          return;
+        }
+        showMessage('google-config-msg', 'Google SSO belum dikonfigurasi. Isi GOOGLE_CLIENT_ID di file .env.');
+      } catch (err) {
+        showMessage('google-config-msg', 'Gagal memuat konfigurasi Google SSO.');
+      }
+    }
+
+    function initGoogleSignIn() {
+      if (!googleClientId) return;
+      if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+        setTimeout(initGoogleSignIn, 250);
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleCredentialResponse,
+        auto_select: false,
+        itp_support: true
+      });
+      google.accounts.id.renderButton(
+        document.getElementById('google-signin-container'),
+        {
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: Math.min(
+            400,
+            Math.max(220, document.getElementById('google-signin-container').offsetWidth || 320)
+          )
+        }
+      );
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+      if (!response || !response.credential) {
+        showMessage('google-config-msg', 'Google sign-in gagal. Silakan coba lagi.');
+        return;
+      }
+      try {
+        const apiRes = await fetch('/api/customer/google-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_token: response.credential })
+        });
+        const result = await apiRes.json();
+        if (!apiRes.ok || !result.success) {
+          showMessage('google-config-msg', result.message || 'Gagal memverifikasi akun Google.');
+          return;
+        }
+        const email = normalizeEmail(result.email || '');
+        if (!email) {
+          showMessage('google-config-msg', 'Email Google tidak ditemukan.');
+          return;
+        }
+        redirectAfterLogin(email, result.data);
+      } catch (err) {
+        showMessage('google-config-msg', 'Gagal terhubung ke server. Coba lagi.');
+      }
+    }
+
+    if (storedCustomer && storedEmail) {
+      window.location.replace('/customer/index.html#home');
+    }
+
+    loadGoogleConfig();
+  </script>
+</body>
+</html>

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking - Kurnia Rental Admin</title>
+  <link rel="stylesheet" href="/admin/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    /* ── Notification bell ── */
+    .notif-btn {
+      position: relative; background: none; border: none; cursor: pointer;
+      font-size: 1.2rem; color: var(--text-muted); padding: .25rem .5rem;
+      transition: color .15s;
+    }
+    .notif-btn:hover { color: var(--primary); }
+    .notif-badge {
+      position: absolute; top: -2px; right: -2px; background: var(--danger);
+      color: #fff; font-size: .65rem; font-weight: 700; min-width: 16px; height: 16px;
+      border-radius: 99px; display: flex; align-items: center; justify-content: center;
+      display: none;
+    }
+
+    /* ── Notification drawer ── */
+    .notif-drawer {
+      position: fixed; top: 0; right: -380px; width: 360px; height: 100vh;
+      background: var(--white); box-shadow: -4px 0 24px rgba(0,0,0,.12);
+      z-index: 300; transition: right .25s ease; display: flex; flex-direction: column;
+    }
+    .notif-drawer.open { right: 0; }
+    .notif-drawer-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .notif-drawer-header h3 { font-size: 1rem; font-weight: 600; }
+    .btn-close-drawer { background: none; border: none; font-size: 1.2rem;
+      cursor: pointer; color: var(--text-muted); }
+    .notif-list { flex: 1; overflow-y: auto; padding: .75rem; }
+    .notif-item {
+      background: #f0f7ff; border-left: 4px solid var(--primary); border-radius: 8px;
+      padding: .85rem 1rem; margin-bottom: .65rem; animation: slideIn .25s ease;
+    }
+    .notif-item.read { background: #f8fafc; border-left-color: var(--border); }
+    @keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:none; } }
+    .notif-item h4 { font-size: .875rem; font-weight: 600; margin-bottom: .25rem; }
+    .notif-item p  { font-size: .8rem; color: var(--text-muted); margin: .15rem 0; }
+    .notif-item .notif-time { font-size: .72rem; color: #94a3b8; margin-top: .35rem; }
+    .notif-empty { text-align: center; padding: 2rem; color: var(--text-muted); font-size: .875rem; }
+
+    /* ── SSE status indicator ── */
+    .sse-status {
+      display: flex; align-items: center; gap: .35rem;
+      font-size: .75rem; color: var(--text-muted);
+    }
+    .sse-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+    .sse-dot.connected { background: var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:.5; } }
+
+    @media (max-width: 480px) {
+      .sse-status span { display: none; } /* sisakan cuma titik indikator di layar sangat sempit */
+      .filter-status-select { width: 130px; }
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div>
+      <h2><span>Kurnia</span> Rental</h2>
+      <p>Panel Administrator</p>
+    </div>
+    <button class="sidebar-close" aria-label="Tutup menu">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Menu</div>
+    <a href="/admin/dashboard.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+    <a href="/admin/motors.html"    class="nav-item"><i class="fa-solid fa-motorcycle"></i> Data Motor</a>
+    <a href="/admin/customers.html" class="nav-item"><i class="fa-solid fa-users"></i> Data Customer</a>
+    <a href="/admin/change_password.html" class="nav-item"><i class="fa-solid fa-key"></i> Ganti Password</a>
+    <a href="/admin/bookings.html"  class="nav-item active"><i class="fa-solid fa-calendar-check"></i> Booking</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn-logout" onclick="openLogoutConfirm()">
+      <i class="fa-solid fa-right-from-bracket"></i> Keluar
+    </button>
+  </div>
+</aside>
+
+<!-- Overlay untuk menutup sidebar di layar kecil -->
+<div class="sidebar-overlay"></div>
+
+<div class="main">
+  <div class="topbar">
+    <button class="menu-toggle" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
+    <h1>Manajemen Booking</h1>
+    <div class="topbar-controls">
+      <!-- SSE status -->
+      <div class="sse-status">
+        <div class="sse-dot" id="sse-dot"></div>
+        <span id="sse-label">Menghubungkan...</span>
+      </div>
+      <!-- Filter -->
+      <select id="filter-status" class="form-control filter-status-select" onchange="filterBookings()">
+        <option value="">Semua Status</option>
+        <option value="pending">Pending</option>
+        <option value="dikonfirmasi">Dikonfirmasi</option>
+        <option value="selesai">Selesai</option>
+        <option value="dibatalkan">Dibatalkan</option>
+      </select>
+      <!-- Notif bell -->
+      <button class="notif-btn" onclick="toggleDrawer()" title="Notifikasi booking masuk">
+        <i class="fa-solid fa-bell"></i>
+        <span class="notif-badge" id="notif-badge">0</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="card">
+      <div class="card-header">
+        <h2>Daftar Booking</h2>
+        <span id="total-booking" style="color:var(--text-muted);font-size:.85rem;"></span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>NO.</th>
+            <th>Motor</th>
+            <th>Plat</th>
+            <th>Pelanggan</th>
+            <th>No. HP</th>
+            <th>Tanggal Sewa</th>
+            <th>Total</th>
+            <th>Denda</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="booking-tbody">
+          <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">
+            <i class="fa-solid fa-spinner fa-spin"></i> Memuat data...
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Notification Drawer -->
+<div class="notif-drawer" id="notif-drawer">
+  <div class="notif-drawer-header">
+    <h3><i class="fa-solid fa-bell" style="color:var(--accent);margin-right:.4rem;"></i> Booking Masuk</h3>
+    <div style="display:flex;gap:.5rem;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="clearNotifs()">Hapus Semua</button>
+      <button class="btn-close-drawer" onclick="toggleDrawer()">&times;</button>
+    </div>
+  </div>
+  <div class="notif-list" id="notif-list">
+    <div class="notif-empty">Belum ada notifikasi</div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="logout-confirm">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Konfirmasi Logout</h3>
+    </div>
+    <div class="modal-body">
+      <p>Anda yakin ingin keluar dari akun ini?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeLogoutConfirm()">Batal</button>
+      <button class="btn btn-danger" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let allBookings   = [];
+  let notifications = [];
+  let unreadCount   = 0;
+  let drawerOpen    = false;
+  let sseSource     = null;
+
+  // Auth check
+  fetch('/api/admin/auth/check', {credentials:'include'})
+    .then(r => { if(!r.ok) location.href='/admin/login.html'; return r.json(); })
+    .then(d => { if(!d.logged_in) location.href='/admin/login.html'; else connectSSE(); })
+    .catch(err => console.error('Auth check gagal:', err));
+
+  // ── SSE: subscribe ke channel admin ──
+  // ── Notifikasi browser asli (bukan cuma toast di halaman) ──
+  function requestNotifPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+  function sendBrowserNotification(title, body) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      const n = new Notification(title, {
+        body, tag: 'kurnia-booking-' + Date.now(),
+        icon: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/svgs/solid/motorcycle.svg'
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch (_) {}
+  }
+  requestNotifPermission();
+
+  function connectSSE() {
+    if (sseSource) sseSource.close();
+
+    sseSource = new EventSource('/api/sse/admin');
+
+    sseSource.addEventListener('open', () => {
+      document.getElementById('sse-dot').className   = 'sse-dot connected';
+      document.getElementById('sse-label').textContent = 'Live';
+    });
+
+    // Event: ada booking baru dari customer
+    sseSource.addEventListener('new_booking', e => {
+      const d = JSON.parse(e.data);
+      addNotification(d);
+      // Refresh tabel booking otomatis
+      loadBookings();
+      // Notifikasi browser asli — tetap muncul walau tab tidak aktif
+      sendBrowserNotification(
+        `Booking baru dari ${d.nama}`,
+        `${d.motor} · ${d.tanggal_mulai} s/d ${d.tanggal_selesai} · Rp ${Number(d.total_harga).toLocaleString('id-ID')}`
+      );
+      // Suara notif (opsional, bisa dikomentari)
+      try { new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAA==').play(); } catch(_) {}
+    });
+
+    sseSource.onerror = () => {
+      document.getElementById('sse-dot').className    = 'sse-dot';
+      document.getElementById('sse-label').textContent = 'Terputus — mencoba ulang...';
+      // Auto-reconnect setelah 5 detik
+      setTimeout(connectSSE, 5000);
+    };
+  }
+
+  // ── Polling cadangan ──
+  // Di sebagian platform hosting (mis. Vercel), koneksi real-time (SSE) di atas
+  // tidak didukung dengan baik karena fungsinya otomatis berhenti setelah
+  // beberapa detik. Supaya data tetap ter-update walau begitu, kita cek data
+  // terbaru secara berkala di sini juga. Kalau SSE ternyata jalan normal
+  // (mis. di Render/VPS), ini cuma jadi lapisan tambahan yang tidak masalah.
+  let lastKnownBookingCount = null;
+  function startPollingFallback() {
+    setInterval(async () => {
+      try {
+        const res  = await fetch('/api/admin/bookings', {credentials:'include'});
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.success) return;
+        const list = data.data || [];
+        if (lastKnownBookingCount !== null && list.length > lastKnownBookingCount) {
+          // Ada booking baru yang masuk sejak pengecekan terakhir
+          const newest = list[0]; // data terbaru selalu di urutan pertama
+          addNotification({
+            booking_id: newest.id, nama: newest.nama_customer, motor: newest.nama_motor,
+            tanggal_mulai: newest.tanggal_mulai, tanggal_selesai: newest.tanggal_selesai,
+            total_harga: newest.total_harga
+          });
+          sendBrowserNotification(
+            `Booking baru dari ${newest.nama_customer}`,
+            `${newest.nama_motor} · Rp ${Number(newest.total_harga).toLocaleString('id-ID')}`
+          );
+        }
+        lastKnownBookingCount = list.length;
+        allBookings = list;
+        filterBookings();
+      } catch (err) {
+        console.error('Polling gagal:', err);
+      }
+    }, 15000); // cek tiap 15 detik
+  }
+  startPollingFallback();
+
+  // ── Notifikasi ──
+  function addNotification(data) {
+    const notif = {
+      id:       Date.now(),
+      booking_id: data.booking_id,
+      nama:     data.nama,
+      motor:    data.motor,
+      total_hari: data.total_hari,
+      total_harga: data.total_harga,
+      tanggal:  `${data.tanggal_mulai} s/d ${data.tanggal_selesai}`,
+      time:     new Date().toLocaleTimeString('id-ID'),
+      read:     false,
+    };
+    notifications.unshift(notif);
+    unreadCount++;
+    renderNotifBadge();
+    renderNotifList();
+
+    // Flash notif popup
+    showToast(`📋 Booking baru dari ${data.nama} — ${data.motor}`, 'success');
+    // Judul halaman berkedip
+    document.title = `🔔 Booking Baru! - Kurnia Rental`;
+    setTimeout(() => document.title = 'Booking - Kurnia Rental Admin', 3000);
+  }
+
+  function renderNotifBadge() {
+    const badge = document.getElementById('notif-badge');
+    badge.textContent = unreadCount;
+    badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+  }
+
+  function renderNotifList() {
+    const list = document.getElementById('notif-list');
+    if (!notifications.length) {
+      list.innerHTML = '<div class="notif-empty">Belum ada notifikasi</div>'; return;
+    }
+    list.innerHTML = notifications.map(n => `
+      <div class="notif-item ${n.read ? 'read' : ''}" id="notif-${n.id}">
+        <h4><i class="fa-solid fa-motorcycle" style="color:var(--primary);margin-right:.3rem;"></i>
+          Booking #${n.booking_id} — ${n.motor}
+        </h4>
+        <p><i class="fa-solid fa-user" style="width:14px;"></i> ${n.nama}</p>
+        <p><i class="fa-solid fa-calendar" style="width:14px;"></i> ${n.tanggal} (${n.total_hari} hari)</p>
+        <p><i class="fa-solid fa-money-bill" style="width:14px;"></i> Rp ${Number(n.total_harga).toLocaleString('id-ID')}</p>
+        <div class="notif-time">${n.time}</div>
+      </div>
+    `).join('');
+  }
+
+  function toggleDrawer() {
+    drawerOpen = !drawerOpen;
+    document.getElementById('notif-drawer').classList.toggle('open', drawerOpen);
+    if (drawerOpen) {
+      // Tandai semua sudah dibaca
+      notifications.forEach(n => n.read = true);
+      unreadCount = 0;
+      renderNotifBadge();
+      renderNotifList();
+    }
+  }
+
+  function clearNotifs() {
+    notifications = []; unreadCount = 0;
+    renderNotifBadge(); renderNotifList();
+  }
+
+  // ── Tabel booking ──
+  function statusBadge(s) {
+    const map = { pending:'badge-amber', dikonfirmasi:'badge-blue', selesai:'badge-green', dibatalkan:'badge-red' };
+    const lbl = { pending:'Pending', dikonfirmasi:'Dikonfirmasi', selesai:'Selesai', dibatalkan:'Dibatalkan' };
+    return `<span class="badge ${map[s]||'badge-gray'}">${lbl[s]||s}</span>`;
+  }
+
+  function actionButtons(b) {
+    if (b.status === 'pending') return `
+      <button class="btn btn-success btn-sm" onclick="updateStatus(${b.id},'dikonfirmasi')">
+        <i class="fa-solid fa-check"></i> Konfirmasi
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="updateStatus(${b.id},'dibatalkan')">
+        <i class="fa-solid fa-xmark"></i> Tolak
+      </button>`;
+    if (b.status === 'dikonfirmasi') return `
+      <button class="btn btn-outline btn-sm" onclick="updateStatus(${b.id},'selesai')">
+        <i class="fa-solid fa-flag-checkered"></i> Selesai
+      </button>`;
+    return '<span style="color:var(--text-muted);font-size:.8rem;">—</span>';
+  }
+
+  function renderTable(list) {
+    const tbody = document.getElementById('booking-tbody');
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">Tidak ada data.</td></tr>';
+      return;
+    }
+    document.getElementById('total-booking').textContent = `${list.length} booking`;
+    tbody.innerHTML = list.map((b, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td><strong>${b.nama_motor}</strong><br><small style="color:var(--text-muted);">${b.merk}</small></td>
+        <td>${b.plat_nomor && b.plat_nomor !== '-' ? b.plat_nomor : '-'}</td>
+        <td>${b.nama_customer}</td>
+        <td>${b.no_hp}</td>
+        <td style="font-size:.8rem;">${b.jenis_sewa === 'paket'
+            ? `${b.tanggal_mulai} ${b.jam_mulai || ''} - ${b.jam_selesai || ''}<br><span style="color:var(--text-muted);">${b.paket_label || ''}</span>`
+            : `${b.tanggal_mulai}${b.jam_mulai ? ' '+b.jam_mulai : ''} s/d ${b.tanggal_selesai}${b.jam_selesai ? ' '+b.jam_selesai : ''}<br><span style="color:var(--text-muted);">(${b.total_hari} hari)</span>`
+          }</td>
+        <td><strong>Rp ${Number(b.total_harga).toLocaleString('id-ID')}</strong></td>
+        <td>${Number(b.denda) > 0 ? `<span style="color:var(--danger);font-weight:600;">Rp ${Number(b.denda).toLocaleString('id-ID')}</span>` : '-'}</td>
+        <td>${statusBadge(b.status)}</td>
+        <td style="white-space:nowrap;">${actionButtons(b)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function filterBookings() {
+    const f = document.getElementById('filter-status').value;
+    renderTable(f ? allBookings.filter(b => b.status === f) : allBookings);
+  }
+
+  async function loadBookings() {
+    const tbody = document.getElementById('booking-tbody');
+    try {
+      const res = await fetch('/api/admin/bookings', {credentials:'include'});
+      if (res.status === 401) { location.href = '/admin/login.html'; return; }
+      if (!res.ok) {
+        throw new Error(`Server merespons status ${res.status}`);
+      }
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Gagal memuat data booking');
+      }
+      allBookings = data.data || [];
+      filterBookings();
+    } catch (err) {
+      console.error('Gagal memuat data booking:', err);
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--danger);">
+        <i class="fa-solid fa-triangle-exclamation"></i> Gagal memuat data booking.<br>
+        <small style="color:var(--text-muted);">${(err && err.message) || 'Periksa koneksi ke server.'}</small><br>
+        <button class="btn btn-outline btn-sm" style="margin-top:.75rem;" onclick="loadBookings()">
+          <i class="fa-solid fa-arrows-rotate"></i> Coba Lagi
+        </button>
+      </td></tr>`;
+    }
+  }
+
+  async function updateStatus(id, status) {
+    const labels = { dikonfirmasi:'dikonfirmasi', dibatalkan:'dibatalkan', selesai:'diselesaikan' };
+    if (!confirm(`Booking akan ${labels[status]}. Lanjutkan?`)) return;
+    const res  = await fetch(`/api/admin/bookings/${id}/status`, {
+      method:'PATCH', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({status})
+    });
+    const data = await res.json();
+    showToast(data.message, data.success ? 'success' : 'error');
+    if (data.success) loadBookings();
+  }
+
+  function showToast(msg, type='success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.className = `show ${type}`;
+    setTimeout(() => el.className = '', 3500);
+  }
+
+  function openLogoutConfirm() {
+    document.getElementById('logout-confirm').classList.add('show');
+  }
+
+  function closeLogoutConfirm() {
+    document.getElementById('logout-confirm').classList.remove('show');
+  }
+
+  async function doLogout() {
+    if (sseSource) sseSource.close();
+    await fetch('/api/admin/logout', {method:'POST', credentials:'include'});
+    location.href = '/admin/login.html';
+  }
+
+  // Tutup drawer jika klik di luar
+  document.addEventListener('click', e => {
+    const drawer = document.getElementById('notif-drawer');
+    const btn    = document.querySelector('.notif-btn');
+    if (drawerOpen && !drawer.contains(e.target) && !btn.contains(e.target)) {
+      drawerOpen = false; drawer.classList.remove('open');
+    }
+  });
+
+  loadBookings();
+</script>
+<script src="/admin/js/sidebar.js"></script>
+</body>
+</html>

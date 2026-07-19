@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Kurnia Rental Admin</title>
+  <link rel="stylesheet" href="/admin/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div>
+      <h2><span>Kurnia</span> Rental</h2>
+      <p>Panel Administrator</p>
+    </div>
+    <button class="sidebar-close" aria-label="Tutup menu">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Menu</div>
+    <a href="/admin/dashboard.html" class="nav-item active">
+      <i class="fa-solid fa-chart-line"></i> Dashboard
+    </a>
+    <a href="/admin/motors.html" class="nav-item">
+      <i class="fa-solid fa-motorcycle"></i> Data Motor
+    </a>
+    <a href="/admin/customers.html" class="nav-item">
+      <i class="fa-solid fa-users"></i> Data Customer
+    </a>
+    <a href="/admin/change_password.html" class="nav-item">
+      <i class="fa-solid fa-key"></i> Ganti Password
+    </a>
+    <a href="/admin/bookings.html" class="nav-item">
+      <i class="fa-solid fa-calendar-check"></i> Booking
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn-logout" onclick="openLogoutConfirm()">
+      <i class="fa-solid fa-right-from-bracket"></i> Keluar
+    </button>
+  </div>
+</aside>
+
+<!-- Overlay untuk menutup sidebar di layar kecil -->
+<div class="sidebar-overlay"></div>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <button class="menu-toggle" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
+    <h1>Dashboard</h1>
+    <div class="topbar-user">
+      <i class="fa-solid fa-circle-user"></i>
+      <span id="admin-name">Admin</span>
+    </div>
+  </div>
+  <div class="content">
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon blue"><i class="fa-solid fa-motorcycle"></i></div>
+        <div class="stat-info">
+          <h3 id="stat-motor">-</h3>
+          <p>Total Motor</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon amber"><i class="fa-solid fa-calendar-check"></i></div>
+        <div class="stat-info">
+          <h3 id="stat-booking">-</h3>
+          <p>Total Booking</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i class="fa-solid fa-clock"></i></div>
+        <div class="stat-info">
+          <h3 id="stat-pending">-</h3>
+          <p>Menunggu Konfirmasi</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i class="fa-solid fa-money-bill-wave"></i></div>
+        <div class="stat-info">
+          <h3 id="stat-pendapatan">-</h3>
+          <p>Total Pendapatan</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Informasi Sistem -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Informasi Sistem</h2>
+        <span style="color:var(--text-muted);font-size:.85rem;">Tampil otomatis di halaman Home aplikasi customer</span>
+      </div>
+      <div style="padding:1.25rem;">
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem;">
+          <input type="text" id="info-input" class="form-control" placeholder="Tulis informasi baru, mis: Jangan Lupa mengguunakan helm kocak.">
+          <button class="btn btn-primary" onclick="addInfo()" style="white-space:nowrap;">
+            <i class="fa-solid fa-plus"></i> Tambah
+          </button>
+        </div>
+        <div id="info-list" style="display:flex;flex-direction:column;gap:.6rem;">
+          <p style="color:var(--text-muted);font-size:.875rem;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat informasi...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="logout-confirm">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Konfirmasi Logout</h3>
+    </div>
+    <div class="modal-body">
+      <p>Anda yakin ingin keluar dari akun ini?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeLogoutConfirm()">Batal</button>
+      <button class="btn btn-danger" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let sseSource = null;
+
+  // Auth check
+  fetch('/api/admin/auth/check', {credentials:'include'})
+    .then(r => { if(!r.ok) location.href='/admin/login.html'; return r.json(); })
+    .then(d => {
+      if (!d.logged_in) location.href='/admin/login.html';
+      else {
+        document.getElementById('admin-name').textContent = d.username;
+        connectDashboardSSE();
+      }
+    })
+    .catch(err => console.error('Auth check gagal:', err));
+
+  // Load stats
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/admin/dashboard/stats', {credentials:'include'});
+      const data = await res.json();
+      if (data.success) {
+        const s = data.data;
+        document.getElementById('stat-motor').textContent = s.total_motor;
+        document.getElementById('stat-booking').textContent = s.total_booking;
+        document.getElementById('stat-pending').textContent = s.pending_booking;
+        document.getElementById('stat-pendapatan').textContent =
+          'Rp ' + Number(s.total_pendapatan).toLocaleString('id-ID');
+      }
+    } catch (err) {
+      console.error('Gagal memuat statistik:', err);
+    }
+  }
+  loadStats();
+
+  // ── Informasi Sistem (CRUD) ──
+  let infoData = [];
+
+  async function loadInfo() {
+    const list = document.getElementById('info-list');
+    try {
+      const res  = await fetch('/api/admin/info', {credentials:'include'});
+      const data = await res.json();
+      infoData = data.data || [];
+      renderInfo();
+    } catch (err) {
+      list.innerHTML = '<p style="color:var(--danger);font-size:.875rem;">Gagal memuat informasi. Coba muat ulang halaman.</p>';
+      console.error('Gagal memuat informasi sistem:', err);
+    }
+  }
+
+  function renderInfo() {
+    const list = document.getElementById('info-list');
+    if (!infoData.length) {
+      list.innerHTML = '<p style="color:var(--text-muted);font-size:.875rem;">Belum ada informasi. Tambahkan di atas.</p>';
+      return;
+    }
+    list.innerHTML = infoData.map(item => `
+      <div style="display:flex;gap:.5rem;align-items:flex-start;padding:.6rem .75rem;background:#f8fafc;border-radius:8px;">
+        <i class="fa-solid fa-circle-info" style="color:var(--primary);margin-top:.3rem;"></i>
+        <input type="text" class="form-control" value="${item.isi.replace(/"/g, '&quot;')}"
+          id="info-edit-${item.id}" style="flex:1;">
+        <button class="btn btn-outline btn-sm" onclick="updateInfo(${item.id})" title="Simpan perubahan">
+          <i class="fa-solid fa-floppy-disk"></i>
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="deleteInfo(${item.id})" title="Hapus">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  async function addInfo() {
+    const input = document.getElementById('info-input');
+    const isi = input.value.trim();
+    if (!isi) { showToast('Isi informasi wajib diisi', 'error'); return; }
+    try {
+      const res = await fetch('/api/admin/info', {
+        method: 'POST', credentials: 'include',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ isi })
+      });
+      const data = await res.json();
+      showToast(data.message, data.success ? 'success' : 'error');
+      if (data.success) { input.value = ''; loadInfo(); }
+    } catch (err) {
+      showToast('Gagal menambah informasi', 'error');
+    }
+  }
+
+  async function updateInfo(id) {
+    const isi = document.getElementById(`info-edit-${id}`).value.trim();
+    if (!isi) { showToast('Isi informasi wajib diisi', 'error'); return; }
+    try {
+      const res = await fetch(`/api/admin/info/${id}`, {
+        method: 'PUT', credentials: 'include',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ isi })
+      });
+      const data = await res.json();
+      showToast(data.message, data.success ? 'success' : 'error');
+      if (data.success) loadInfo();
+    } catch (err) {
+      showToast('Gagal memperbarui informasi', 'error');
+    }
+  }
+
+  async function deleteInfo(id) {
+    if (!confirm('Hapus informasi ini?')) return;
+    try {
+      const res = await fetch(`/api/admin/info/${id}`, {method: 'DELETE', credentials: 'include'});
+      const data = await res.json();
+      showToast(data.message, data.success ? 'success' : 'error');
+      if (data.success) loadInfo();
+    } catch (err) {
+      showToast('Gagal menghapus informasi', 'error');
+    }
+  }
+
+  loadInfo();
+
+  // ── Notifikasi browser asli (bukan cuma toast di halaman) ──
+  function requestNotifPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+  function sendBrowserNotification(title, body) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      const n = new Notification(title, {
+        body, tag: 'kurnia-booking-' + Date.now(),
+        icon: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/svgs/solid/motorcycle.svg'
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch (_) {}
+  }
+  requestNotifPermission();
+
+  function connectDashboardSSE() {
+    if (sseSource) sseSource.close();
+    sseSource = new EventSource('/api/sse/admin');
+    sseSource.addEventListener('new_booking', e => {
+      loadStats();
+      showToast('Booking baru masuk. Statistik diperbarui.', 'success');
+      let d = {};
+      try { d = JSON.parse(e.data); } catch (_) {}
+      sendBrowserNotification(
+        `Booking baru${d.nama ? ' dari ' + d.nama : ''}`,
+        d.motor ? `${d.motor} · ${d.tanggal_mulai || ''} s/d ${d.tanggal_selesai || ''}` : 'Cek halaman Bookings untuk detail.'
+      );
+    });
+    sseSource.onerror = () => {
+      if (sseSource) sseSource.close();
+      setTimeout(connectDashboardSSE, 5000);
+    };
+  }
+
+  // ── Polling cadangan ──
+  // Di sebagian platform hosting (mis. Vercel), SSE di atas tidak didukung
+  // dengan baik. Ini jaring pengaman supaya statistik tetap ter-update.
+  function startPollingFallback() {
+    setInterval(loadStats, 20000); // cek tiap 20 detik
+  }
+  startPollingFallback();
+
+  function openLogoutConfirm() {
+    document.getElementById('logout-confirm').classList.add('show');
+  }
+
+  function closeLogoutConfirm() {
+    document.getElementById('logout-confirm').classList.remove('show');
+  }
+
+  async function doLogout() {
+    if (sseSource) sseSource.close();
+    await fetch('/api/admin/logout', {method:'POST', credentials:'include'});
+    location.href = '/admin/login.html';
+  }
+
+  function showToast(msg, type='success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.className = `show ${type}`;
+    setTimeout(() => el.className = '', 3500);
+  }
+</script>
+<script src="/admin/js/sidebar.js"></script>
+</body>
+</html>

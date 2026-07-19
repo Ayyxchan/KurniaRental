@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Motor - Kurnia Rental Admin</title>
+  <link rel="stylesheet" href="/admin/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .upload-area {
+      border: 2px dashed var(--border); border-radius: 8px; padding: 1.5rem;
+      text-align: center; cursor: pointer; transition: all .15s; position: relative;
+    }
+    .upload-area:hover, .upload-area.drag-over { border-color: var(--primary); background: #f0f4ff; }
+    .upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+    .upload-area i { font-size: 1.8rem; color: #94a3b8; margin-bottom: .5rem; display: block; }
+    .upload-area p { color: var(--text-muted); font-size: .85rem; }
+
+    .preview-wrap { position: relative; display: none; border-radius: 8px; overflow: hidden; }
+    .preview-img { width: 100%; height: 160px; object-fit: cover; display: block; }
+    .preview-remove-btn {
+      position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+      border-radius: 50%; border: none; background: rgba(15,23,42,.65); color: #fff;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: .9rem; transition: background .15s;
+    }
+    .preview-remove-btn:hover { background: var(--danger, #ef4444); }
+    .upload-progress { display: none; margin-top: .5rem; font-size: .8rem; color: var(--primary); }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div>
+      <h2><span>Kurnia</span> Rental</h2>
+      <p>Panel Administrator</p>
+    </div>
+    <button class="sidebar-close" aria-label="Tutup menu">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Menu</div>
+    <a href="/admin/dashboard.html" class="nav-item"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+    <a href="/admin/motors.html" class="nav-item active"><i class="fa-solid fa-motorcycle"></i> Data Motor</a>
+    <a href="/admin/customers.html" class="nav-item"><i class="fa-solid fa-users"></i> Data Customer</a>
+    <a href="/admin/change_password.html" class="nav-item"><i class="fa-solid fa-key"></i> Ganti Password</a>
+    <a href="/admin/bookings.html" class="nav-item"><i class="fa-solid fa-calendar-check"></i> Booking</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn-logout" onclick="openLogoutConfirm()">
+      <i class="fa-solid fa-right-from-bracket"></i> Keluar
+    </button>
+  </div>
+</aside>
+
+<!-- Overlay untuk menutup sidebar di layar kecil -->
+<div class="sidebar-overlay"></div>
+
+<div class="main">
+  <div class="topbar">
+    <button class="menu-toggle" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
+    <h1>Data Motor</h1>
+    <button class="btn btn-primary" onclick="openModal()">
+      <i class="fa-solid fa-plus"></i> Tambah Motor
+    </button>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="card-header">
+        <h2>Daftar Motor</h2>
+        <span id="total-motor" style="color:var(--text-muted);font-size:.85rem;"></span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>NO.</th>
+            <th>Foto</th>
+            <th>Nama Motor</th>
+            <th>Merk</th>
+            <th>Plat Nomor</th>
+            <th>Tahun</th>
+            <th>Status</th>
+            <th>Edit</th>
+          </tr>
+        </thead>
+        <tbody id="motor-tbody">
+          <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">
+            <i class="fa-solid fa-spinner fa-spin"></i> Memuat data...
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tambah/Edit Motor -->
+<div class="modal-overlay" id="modal-motor">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Tambah Motor</h3>
+      <button class="btn-close-modal" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="motor-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nama Motor *</label>
+          <input type="text" id="nama-motor" class="form-control" placeholder="Honda Beat 2023">
+        </div>
+        <div class="form-group">
+          <label>Merk *</label>
+          <input type="text" id="merk" class="form-control" placeholder="Honda">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Plat Nomor</label>
+        <input type="text" id="plat-nomor" class="form-control" placeholder="B 1234 XYZ" style="text-transform:uppercase;">
+      </div>
+      <div class="form-group">
+        <label>Tahun</label>
+        <input type="number" id="tahun" class="form-control" placeholder="2023" min="2000" max="2030">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="status-motor" class="form-control">
+          <option value="tersedia">Tersedia</option>
+          <option value="disewa">Disewa</option>
+          <option value="maintenance">Maintenance</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Deskripsi</label>
+        <textarea id="deskripsi" class="form-control" rows="2" placeholder="Keterangan singkat..."></textarea>
+      </div>
+
+      <!-- Upload foto via Cloudinary -->
+      <div class="form-group">
+        <label>Foto Motor</label>
+        <div class="upload-area" id="upload-area">
+          <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp"
+            onchange="handleFileSelect(event)">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <p id="upload-text">Klik atau drag foto ke sini<br><small>JPG, PNG, WebP — maks 5MB</small></p>
+        </div>
+        <div class="preview-wrap" id="preview-wrap">
+          <img id="preview-img" class="preview-img" alt="Preview">
+          <button type="button" class="preview-remove-btn" onclick="removePreviewImage()" title="Batalkan foto ini">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <p class="upload-progress" id="upload-progress">
+          <i class="fa-solid fa-spinner fa-spin"></i> Mengupload foto...
+        </p>
+        <input type="hidden" id="gambar-url">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Batal</button>
+      <button class="btn btn-primary" id="btn-save" onclick="saveMotor()">
+        <i class="fa-solid fa-floppy-disk"></i> Simpan
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="logout-confirm">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Konfirmasi Logout</h3>
+    </div>
+    <div class="modal-body">
+      <p>Anda yakin ingin keluar dari akun ini?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeLogoutConfirm()">Batal</button>
+      <button class="btn btn-danger" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let editMode = false;
+  let allMotors = [];
+
+  // Auth check
+  fetch('/api/admin/auth/check', {credentials:'include'})
+    .then(r => { if(!r.ok) location.href='/admin/login.html'; return r.json(); })
+    .then(d => { if(!d.logged_in) location.href='/admin/login.html'; });
+
+  // ---- Toggle antara kotak upload (dashed) dan preview foto ----
+  function showPreview(url) {
+    document.getElementById('preview-img').src = url;
+    document.getElementById('preview-wrap').style.display = 'block';
+    document.getElementById('upload-area').style.display = 'none';
+  }
+  function hidePreview() {
+    document.getElementById('preview-wrap').style.display = 'none';
+    document.getElementById('preview-img').src = '';
+    document.getElementById('upload-area').style.display = 'block';
+  }
+  function removePreviewImage() {
+    document.getElementById('gambar-url').value = '';
+    document.getElementById('file-input').value = '';
+    document.getElementById('upload-text').innerHTML = 'Klik atau drag foto ke sini<br><small>JPG, PNG, WebP — maks 5MB</small>';
+    hidePreview();
+  }
+
+  // ---- Upload foto ke Cloudinary (via backend) ----
+  async function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Ukuran file maksimal 5MB', 'error'); return;
+    }
+
+    // Preview lokal dulu
+    const reader = new FileReader();
+    reader.onload = e => showPreview(e.target.result);
+    reader.readAsDataURL(file);
+
+    // Upload ke server → Cloudinary
+    const progress = document.getElementById('upload-progress');
+    const btnSave  = document.getElementById('btn-save');
+    progress.style.display = 'block';
+    btnSave.disabled = true;
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/admin/upload/motor', {
+        method: 'POST', credentials: 'include', body: form
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('gambar-url').value = data.url;
+        showToast('Foto berhasil diupload ke Cloudinary', 'success');
+      } else {
+        showToast(data.message, 'error');
+        document.getElementById('gambar-url').value = '';
+        removePreviewImage();
+      }
+    } catch(e) {
+      console.error('Gagal upload foto:', e);
+      showToast('Gagal upload foto', 'error');
+      removePreviewImage();
+    } finally {
+      progress.style.display = 'none';
+      btnSave.disabled = false;
+    }
+  }
+
+  // Drag & drop
+  const uploadArea = document.getElementById('upload-area');
+  uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+  uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      document.getElementById('file-input').files = e.dataTransfer.files;
+      handleFileSelect({target: {files: e.dataTransfer.files}});
+    }
+  });
+
+  // ---- Tabel motor ----
+  function statusBadge(s) {
+    const map = { tersedia:'badge-green', disewa:'badge-blue', maintenance:'badge-amber' };
+    const lbl = { tersedia:'Tersedia', disewa:'Disewa', maintenance:'Maintenance' };
+    return `<span class="badge ${map[s]||'badge-gray'}">${lbl[s]||s}</span>`;
+  }
+
+  async function loadMotors() {
+    const tbody = document.getElementById('motor-tbody');
+    try {
+      const res  = await fetch('/api/admin/motors', {credentials:'include'});
+      if (res.status === 401) { location.href = '/admin/login.html'; return; }
+      if (!res.ok) throw new Error(`Server merespons status ${res.status}`);
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Gagal memuat data motor');
+      allMotors  = data.data || [];
+      if (!allMotors.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">Belum ada data motor.</td></tr>';
+        return;
+      }
+      document.getElementById('total-motor').textContent = `${allMotors.length} motor`;
+      tbody.innerHTML = allMotors.map((m, i) => `
+        <tr>
+          <td>${i+1}</td>
+          <td>
+            ${m.gambar_url
+              ? `<img src="${m.gambar_url}" style="width:56px;height:42px;object-fit:cover;border-radius:6px;">`
+              : `<div style="width:56px;height:42px;background:#f1f5f9;border-radius:6px;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-motorcycle" style="color:#cbd5e1;"></i></div>`}
+          </td>
+          <td><strong>${m.nama_motor}</strong></td>
+          <td>${m.merk}</td>
+          <td>${m.plat_nomor || '-'}</td>
+          <td>${m.tahun||'-'}</td>
+          <td>${statusBadge(m.status)}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-outline btn-sm" onclick="editMotor(${m.id})">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteMotor(${m.id},'${m.nama_motor.replace(/'/g,"\\'")}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      console.error('Gagal memuat data motor:', err);
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--danger);">
+        <i class="fa-solid fa-triangle-exclamation"></i> Gagal memuat data motor.<br>
+        <small style="color:var(--text-muted);">${(err && err.message) || 'Periksa koneksi ke server.'}</small><br>
+        <button class="btn btn-outline btn-sm" style="margin-top:.75rem;" onclick="loadMotors()">
+          <i class="fa-solid fa-arrows-rotate"></i> Coba Lagi
+        </button>
+      </td></tr>`;
+    }
+  }
+
+  function editMotor(id) {
+    const m = allMotors.find(x => x.id === id);
+    if (!m) return;
+    document.getElementById('modal-title').textContent = 'Edit Motor';
+    document.getElementById('motor-id').value    = m.id;
+    document.getElementById('nama-motor').value  = m.nama_motor;
+    document.getElementById('merk').value        = m.merk;
+    document.getElementById('plat-nomor').value  = m.plat_nomor || '';
+    document.getElementById('tahun').value       = m.tahun || '';
+    document.getElementById('status-motor').value= m.status;
+    document.getElementById('deskripsi').value   = m.deskripsi || '';
+    document.getElementById('gambar-url').value  = m.gambar_url || '';
+
+    if (m.gambar_url) showPreview(m.gambar_url);
+    else hidePreview();
+    document.getElementById('upload-text').innerHTML = 'Klik atau drag foto ke sini<br><small>JPG, PNG, WebP — maks 5MB</small>';
+
+    editMode = true;
+    document.getElementById('modal-motor').classList.add('show');
+  }
+
+  function openModal() {
+    document.getElementById('modal-title').textContent = 'Tambah Motor';
+    document.getElementById('motor-id').value = '';
+    ['nama-motor','merk','plat-nomor','tahun','deskripsi','gambar-url'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('status-motor').value = 'tersedia';
+    hidePreview();
+    document.getElementById('upload-text').innerHTML = 'Klik atau drag foto ke sini<br><small>JPG, PNG, WebP — maks 5MB</small>';
+    editMode = false;
+    document.getElementById('modal-motor').classList.add('show');
+  }
+
+  function closeModal() { document.getElementById('modal-motor').classList.remove('show'); }
+
+  async function saveMotor() {
+    const id = document.getElementById('motor-id').value;
+    const payload = {
+      nama_motor:    document.getElementById('nama-motor').value.trim(),
+      merk:          document.getElementById('merk').value.trim(),
+      plat_nomor:    document.getElementById('plat-nomor').value.trim().toUpperCase(),
+      tahun:         document.getElementById('tahun').value || null,
+      status:        document.getElementById('status-motor').value,
+      deskripsi:     document.getElementById('deskripsi').value.trim(),
+      gambar_url:    document.getElementById('gambar-url').value.trim(),
+    };
+    if (!payload.nama_motor || !payload.merk) {
+      showToast('Nama motor dan merk wajib diisi', 'error'); return;
+    }
+    const url    = editMode ? `/api/admin/motors/${id}` : '/api/admin/motors';
+    const method = editMode ? 'PUT' : 'POST';
+    const res  = await fetch(url, {
+      method, credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) { showToast(data.message, 'success'); closeModal(); loadMotors(); }
+    else showToast(data.message, 'error');
+  }
+
+  async function deleteMotor(id, nama) {
+    if (!confirm(`Hapus motor "${nama}"?`)) return;
+    const res  = await fetch(`/api/admin/motors/${id}`, {method:'DELETE', credentials:'include'});
+    const data = await res.json();
+    showToast(data.message, data.success ? 'success' : 'error');
+    if (data.success) loadMotors();
+  }
+
+  function showToast(msg, type='success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.className = `show ${type}`;
+    setTimeout(() => el.className = '', 3000);
+  }
+
+  function openLogoutConfirm() {
+    document.getElementById('logout-confirm').classList.add('show');
+  }
+
+  function closeLogoutConfirm() {
+    document.getElementById('logout-confirm').classList.remove('show');
+  }
+
+  async function doLogout() {
+    await fetch('/api/admin/logout', {method:'POST', credentials:'include'});
+    location.href = '/admin/login.html';
+  }
+
+  loadMotors();
+</script>
+<script src="/admin/js/sidebar.js"></script>
+</body>
+</html>
+
