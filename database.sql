@@ -74,6 +74,8 @@ USE kurnia_rental;
 
 -- Plat nomor motor
 ALTER TABLE motors ADD COLUMN IF NOT EXISTS plat_nomor VARCHAR(20) NULL AFTER merk;
+-- Pastikan tidak ada plat nomor yang sama persis (kosong/NULL boleh lebih dari satu)
+ALTER TABLE motors ADD CONSTRAINT uq_motors_plat_nomor UNIQUE (plat_nomor);
 
 -- Password untuk login customer via email (nullable = akun Google-only)
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NULL;
@@ -91,5 +93,45 @@ CREATE TABLE IF NOT EXISTS site_info (
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- ================================================================
+-- MIGRASI: Plat nomor motor harus unik (tidak boleh sama)
+-- ================================================================
+USE kurnia_rental;
+
+-- ================================================================
+-- MIGRASI: Riwayat booking TETAP ADA walau customer hapus akunnya
+-- (sebelumnya ON DELETE CASCADE = ikut terhapus, sekarang tidak lagi)
+-- ================================================================
+USE kurnia_rental;
+
+-- Simpan juga nama & no HP customer langsung di baris booking (snapshot saat
+-- booking dibuat), supaya riwayat tetap terbaca jelas walau baris customer-nya
+-- sendiri sudah dihapus dari tabel customers.
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_nama VARCHAR(100) NULL AFTER customer_id;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_hp   VARCHAR(20)  NULL AFTER customer_nama;
+
+-- Isi snapshot untuk data booking yang sudah ada sebelumnya, dari data customer saat ini
+UPDATE bookings b
+JOIN customers c ON b.customer_id = c.id
+SET b.customer_nama = c.nama, b.customer_hp = c.no_hp
+WHERE b.customer_nama IS NULL;
+
+-- Ganti aturan hapus dari CASCADE (ikut terhapus) menjadi SET NULL (baris booking
+-- tetap ada, cuma tautan ke customer_id-nya jadi kosong)
+SET @fk_name = (
+    SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings'
+    AND COLUMN_NAME = 'customer_id' AND REFERENCED_TABLE_NAME = 'customers'
+    LIMIT 1
+);
+SET @drop_fk_sql = CONCAT('ALTER TABLE bookings DROP FOREIGN KEY ', @fk_name);
+PREPARE stmt FROM @drop_fk_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+ALTER TABLE bookings MODIFY COLUMN customer_id INT NULL;
+ALTER TABLE bookings ADD CONSTRAINT fk_bookings_customer
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
 
 select * from motors:
