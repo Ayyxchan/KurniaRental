@@ -51,10 +51,14 @@ def auto_cancel_expired_bookings():
         fetch=True
     )
     for row in overdue:
-        jadwal_selesai_dt = datetime.combine(
-            row['tanggal_selesai'],
-            row['jam_selesai'] or dtime(23, 59, 59)
-        )
+        jam_selesai = row['jam_selesai'] or dtime(23, 59, 59)
+        if hasattr(jam_selesai, 'total_seconds'):
+            # mysql-connector kadang mengembalikan timedelta untuk kolom TIME
+            total_sec = int(jam_selesai.total_seconds())
+            jam_selesai = dtime(hour=(total_sec // 3600) % 24,
+                                 minute=(total_sec // 60) % 60,
+                                 second=total_sec % 60)
+        jadwal_selesai_dt = datetime.combine(row['tanggal_selesai'], jam_selesai)
         telat_jam = (datetime.now() - jadwal_selesai_dt).total_seconds() / 3600
         denda = math.ceil(telat_jam) * DENDA_PER_JAM
         db.execute_query(
