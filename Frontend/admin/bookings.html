@@ -384,7 +384,7 @@
         <td>${i+1}</td>
         <td><strong>${b.nama_motor}</strong><br><small style="color:var(--text-muted);">${b.merk}</small></td>
         <td>${b.plat_nomor && b.plat_nomor !== '-' ? b.plat_nomor : '-'}</td>
-        <td>${b.nama_customer}</td>
+        <td>${b.nama_customer}${b.catatan ? `<br><small style="color:var(--text-muted);font-style:italic;" title="Catatan dari customer">📝 ${b.catatan}</small>` : ''}</td>
         <td>${b.no_hp}</td>
         <td style="font-size:.8rem;">${b.jenis_sewa === 'paket'
             ? `${b.tanggal_mulai} ${b.jam_mulai || ''} - ${b.jam_selesai || ''}<br><span style="color:var(--text-muted);">${b.paket_label || ''}</span>`
