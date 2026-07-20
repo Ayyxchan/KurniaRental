@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS customers (
 CREATE TABLE IF NOT EXISTS bookings (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     motor_id        INT NOT NULL,
-    customer_id     INT NOT NULL,
+    customer_id     INT NULL,
     jenis_sewa      ENUM('harian','paket') NOT NULL DEFAULT 'harian',
     tanggal_mulai   DATE NOT NULL,
     jam_mulai       TIME NULL,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (motor_id) REFERENCES motors(id) ON DELETE CASCADE,
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
 );
 
 -- Sample data motor
@@ -62,8 +62,7 @@ INSERT INTO motors (nama_motor, merk, tahun, status, deskripsi) VALUES
 ('Honda Beat 2023', 'Honda', 2023, 'tersedia', 'Motor matic Honda Beat tahun 2023, irit dan nyaman untuk harian.'),
 ('Yamaha NMAX 2022', 'Yamaha', 2022, 'tersedia', 'Skutik premium NMAX, cocok untuk perjalanan jauh.'),
 ('Honda Vario 125 2023', 'Honda', 2023, 'tersedia', 'Vario 125 sporty dengan fitur keyless.'),
-('Yamaha Mio M3 2021', 'Yamaha', 2021, 'tersedia', 'Mio M3 ringan dan lincALTER TABLE motors ADD CONSTRAINT uq_motors_plat_nomor UNIQUE (plat_nomor);
-ah untuk dalam kota.'),
+('Yamaha Mio M3 2021', 'Yamaha', 2021, 'tersedia', 'Mio M3 ringan dan lincah untuk dalam kota.'),
 ('Honda PCX 2022', 'Honda', 2022, 'disewa', 'PCX premium, nyaman dan stylish.');
 
 USE kurnia_rental;
@@ -75,7 +74,6 @@ USE kurnia_rental;
 
 -- Plat nomor motor
 ALTER TABLE motors ADD COLUMN IF NOT EXISTS plat_nomor VARCHAR(20) NULL AFTER merk;
--- Pastikan tidak ada plat nomor yang sama persis (kosong/NULL boleh lebih dari satu)
 
 -- Password untuk login customer via email (nullable = akun Google-only)
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NULL;
@@ -95,43 +93,92 @@ CREATE TABLE IF NOT EXISTS site_info (
 );
 
 -- ================================================================
--- MIGRASI: Plat nomor motor harus unik (tidak boleh sama)
+-- MIGRASI — jalankan di SQL Editor TiDB Cloud (atau VS Code), SATU PER SATU
+-- dari atas ke bawah. Jangan langsung semua sekaligus, supaya kalau ada
+-- yang error kamu tahu persis berhenti di baris mana.
 -- ================================================================
-USE kurnia_rental;
 
--- ================================================================
--- MIGRASI: Riwayat booking TETAP ADA walau customer hapus akunnya
--- (sebelumnya ON DELETE CASCADE = ikut terhapus, sekarang tidak lagi)
--- ================================================================
-USE kurnia_rental;
+-- ----------------------------------------------------------------
+-- BAGIAN 1 — WAJIB DIJALANKAN DULUAN, ini penyebab error 500 di
+-- halaman Booking admin ("Unknown column 'b.nama_pelanggan'").
+-- Kode Backend/admin/bookings.py sudah menganggap kolom ini ada,
+-- padahal baru sebatas ditulis di file ini, belum dieksekusi ke TiDB.
+-- ----------------------------------------------------------------
 
--- Simpan juga nama & no HP customer langsung di baris booking (snapshot saat
--- booking dibuat), supaya riwayat tetap terbaca jelas walau baris customer-nya
--- sendiri sudah dihapus dari tabel customers.
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_nama VARCHAR(100) NULL AFTER customer_id;
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_hp   VARCHAR(20)  NULL AFTER customer_nama;
+-- 1a. Tambah kolom snapshot nama & no HP pelanggan di tabel bookings,
+--     supaya riwayat tetap bisa dibaca meski akun customer sudah dihapus.
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS nama_pelanggan VARCHAR(100) NULL AFTER customer_id;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS no_hp_pelanggan VARCHAR(20) NULL AFTER nama_pelanggan;
 
--- Isi snapshot untuk data booking yang sudah ada sebelumnya, dari data customer saat ini
+-- 1b. Isi snapshot untuk booking yang SUDAH ADA sekarang, dari data customer saat ini.
 UPDATE bookings b
 JOIN customers c ON b.customer_id = c.id
-SET b.customer_nama = c.nama, b.customer_hp = c.no_hp
-WHERE b.customer_nama IS NULL;
+SET b.nama_pelanggan  = c.nama,
+    b.no_hp_pelanggan = c.no_hp
+WHERE b.nama_pelanggan IS NULL;
 
--- Ganti aturan hapus dari CASCADE (ikut terhapus) menjadi SET NULL (baris booking
--- tetap ada, cuma tautan ke customer_id-nya jadi kosong)
-SET @fk_name = (
-    SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings'
-    AND COLUMN_NAME = 'customer_id' AND REFERENCED_TABLE_NAME = 'customers'
-    LIMIT 1
-);
-SET @drop_fk_sql = CONCAT('ALTER TABLE bookings DROP FOREIGN KEY ', @fk_name);
-PREPARE stmt FROM @drop_fk_sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- 1c. Cek hasilnya (harus muncul data, bukan NULL semua).
+SELECT id, customer_id, nama_pelanggan, no_hp_pelanggan FROM bookings LIMIT 10;
 
-ALTER TABLE bookings MODIFY COLUMN customer_id INT NULL;
+-- >>> Setelah Bagian 1 ini jalan, refresh halaman admin/bookings.html —
+--     error 500 seharusnya sudah hilang. Bagian 2 & 3 di bawah boleh
+--     menyusul kapan saja, tidak seurgent Bagian 1.
+
+
+-- ----------------------------------------------------------------
+-- BAGIAN 2 — Plat motor jadi unik (tidak boleh dobel)
+-- ----------------------------------------------------------------
+
+-- 2a. Cek dulu apakah ada plat_nomor yang sudah kembar di data lama.
+--     Kalau query ini mengembalikan baris, benerin/kosongkan salah satunya
+--     dulu manual lewat halaman Data Motor sebelum lanjut ke 2c — UNIQUE
+--     tidak bisa dipasang kalau masih ada data yang bentrok.
+SELECT plat_nomor, COUNT(*) AS jumlah
+FROM motors
+WHERE plat_nomor IS NOT NULL AND plat_nomor <> ''
+GROUP BY plat_nomor
+HAVING COUNT(*) > 1;
+
+-- 2b. WAJIB: ubah plat_nomor yang kosong ('') jadi NULL dulu.
+--     UNIQUE constraint menganggap '' sebagai nilai sungguhan (jadi motor
+--     yang belum diisi platnya bisa saling "bentrok" kalau sama-sama '');
+--     beda dengan NULL yang memang dikecualikan dari pengecekan unik.
+UPDATE motors SET plat_nomor = NULL WHERE plat_nomor = '';
+
+-- 2c. Setelah 2a kosong (tidak ada yang kembar) dan 2b sudah dijalankan,
+--     baru pasang constraint unique-nya.
+ALTER TABLE motors ADD CONSTRAINT uq_motors_plat_nomor UNIQUE (plat_nomor);
+
+
+-- ----------------------------------------------------------------
+-- BAGIAN 3 — Booking tidak ikut hilang saat customer hapus akun
+-- ----------------------------------------------------------------
+
+-- 3a. Cari nama constraint foreign key customer_id yang sekarang aktif
+--     (nama auto-generate, biasanya seperti "bookings_ibfk_2" — CATAT
+--     hasilnya, dipakai untuk isi langkah 3b di bawah).
+SELECT CONSTRAINT_NAME
+FROM information_schema.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = 'kurnia_rental'
+  AND TABLE_NAME = 'bookings'
+  AND COLUMN_NAME = 'customer_id'
+  AND REFERENCED_TABLE_NAME = 'customers';
+
+-- 3b. Hapus FK lama. GANTI <NAMA_CONSTRAINT> dengan hasil query 3a di atas
+--     sebelum dijalankan — ini SATU-SATUNYA baris yang wajib diedit manual.
+--     Contoh: ALTER TABLE bookings DROP FOREIGN KEY bookings_ibfk_2;
+ALTER TABLE bookings DROP FOREIGN KEY fk_bookings_customer;
+
+-- 3c. Ubah customer_id supaya boleh kosong (NULL).
+ALTER TABLE bookings MODIFY customer_id INT NULL;
+
+-- 3d. Pasang ulang FK dengan ON DELETE SET NULL (bukan CASCADE lagi).
 ALTER TABLE bookings ADD CONSTRAINT fk_bookings_customer
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL;
 
-select * from motors:
+-- ================================================================
+-- SELESAI. Cara pastiin semua sudah benar:
+-- - Buka admin/bookings.html → harus normal, tidak ada lagi "Gagal memuat data"
+-- - Hapus 1 akun customer test → booking miliknya harus tetap ada di admin
+-- - Tambah 2 motor dengan plat nomor sama → harus muncul pesan error, bukan berhasil
+-- ================================================================

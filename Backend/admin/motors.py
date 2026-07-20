@@ -36,7 +36,7 @@ def add_motor():
     motor_id = db.execute_query(
         """INSERT INTO motors (nama_motor, merk, plat_nomor, tahun, status, deskripsi, gambar_url)
            VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-        (data['nama_motor'], data['merk'], plat_nomor, data.get('tahun'),
+        (data['nama_motor'], data['merk'], plat_nomor or None, data.get('tahun'),
          data.get('status', 'tersedia'),
          data.get('deskripsi', ''), data.get('gambar_url', ''))
     )
@@ -59,7 +59,7 @@ def update_motor(motor_id):
     db.execute_query(
         """UPDATE motors SET nama_motor=%s, merk=%s, plat_nomor=%s, tahun=%s,
            status=%s, deskripsi=%s, gambar_url=%s WHERE id=%s""",
-        (data['nama_motor'], data['merk'], plat_nomor, data.get('tahun'),
+        (data['nama_motor'], data['merk'], plat_nomor or None, data.get('tahun'),
          data.get('status', 'tersedia'),
          data.get('deskripsi', ''), data.get('gambar_url', ''), motor_id)
     )
