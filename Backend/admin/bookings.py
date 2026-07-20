@@ -11,6 +11,14 @@ TARIF_HARIAN = 50000
 DENDA_PER_JAM = 5000  # denda keterlambatan pengembalian motor, per jam kelebihan
 
 
+def now_wib():
+    """Server Vercel jalan di zona UTC, sementara semua jam yang diinput
+    customer/admin itu WIB (UTC+7). Pakai fungsi ini setiap butuh 'jam
+    sekarang' supaya konsisten dibandingkan dengan tanggal_selesai/jam_selesai
+    dkk yang tersimpan sebagai jam WIB apa adanya."""
+    return datetime.utcnow() + timedelta(hours=7)
+
+
 @bookings_bp.route('/admin/bookings', methods=['GET'])
 @login_required
 def get_bookings():
@@ -19,8 +27,8 @@ def get_bookings():
                   COALESCE(m.nama_motor, 'Motor tidak ditemukan') AS nama_motor,
                   COALESCE(m.merk, '-') AS merk,
                   COALESCE(m.plat_nomor, '-') AS plat_nomor,
-                  COALESCE(c.nama, 'Customer tidak ditemukan') AS nama_customer,
-                  COALESCE(c.no_hp, '-') AS no_hp
+                  COALESCE(c.nama, b.nama_pelanggan, 'Akun sudah dihapus') AS nama_customer,
+                  COALESCE(c.no_hp, b.no_hp_pelanggan, '-') AS no_hp
            FROM bookings b
            LEFT JOIN motors m ON b.motor_id = m.id
            LEFT JOIN customers c ON b.customer_id = c.id
@@ -61,7 +69,7 @@ def update_booking_status(booking_id):
 
     if status == 'selesai':
         # Hitung denda jika motor dikembalikan setelah jadwal selesai sewa
-        waktu_kembali = datetime.now()
+        waktu_kembali = now_wib()
         jam_selesai = booking.get('jam_selesai') or dtime(23, 59, 59)
         if hasattr(jam_selesai, 'total_seconds'):
             # mysql-connector kadang mengembalikan timedelta untuk kolom TIME
