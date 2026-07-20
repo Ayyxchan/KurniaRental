@@ -19,8 +19,8 @@ def get_bookings():
                   COALESCE(m.nama_motor, 'Motor tidak ditemukan') AS nama_motor,
                   COALESCE(m.merk, '-') AS merk,
                   COALESCE(m.plat_nomor, '-') AS plat_nomor,
-                  COALESCE(c.nama, 'Customer tidak ditemukan') AS nama_customer,
-                  COALESCE(c.no_hp, '-') AS no_hp
+                  COALESCE(c.nama, b.nama_pelanggan, 'Akun sudah dihapus') AS nama_customer,
+                  COALESCE(c.no_hp, b.no_hp_pelanggan, '-') AS no_hp
            FROM bookings b
            LEFT JOIN motors m ON b.motor_id = m.id
            LEFT JOIN customers c ON b.customer_id = c.id

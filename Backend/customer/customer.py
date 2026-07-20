@@ -317,7 +317,9 @@ def delete_customer_account():
             'message': 'Kamu masih punya booking yang sedang berjalan. Selesaikan dulu sewa motornya sebelum menghapus akun.'
         }), 400
 
-    # Menghapus customer akan otomatis menghapus riwayat booking miliknya (ON DELETE CASCADE)
+    # Booking milik customer ini TIDAK ikut terhapus (customer_id di booking otomatis
+    # jadi NULL berkat ON DELETE SET NULL) — nama & no HP tetap terbaca dari snapshot
+    # nama_pelanggan/no_hp_pelanggan yang sudah tersimpan di masing-masing booking.
     db.execute_query("DELETE FROM customers WHERE id = %s", (customer['id'],))
     return jsonify({'success': True, 'message': 'Akun berhasil dihapus'})
 
@@ -596,12 +598,14 @@ def create_booking():
                 return jsonify({'success': False, 'message': 'Gagal menyimpan data customer'}), 500
             customer_id = customer['id']
 
-    # Simpan booking
+    # Simpan booking (nama & no_hp disimpan juga sebagai snapshot, supaya riwayat
+    # tetap terbaca walau nanti akun customer ini dihapus)
     booking_id = db.execute_query(
-        """INSERT INTO bookings (motor_id, customer_id, jenis_sewa, tanggal_mulai, jam_mulai,
+        """INSERT INTO bookings (motor_id, customer_id, nama_pelanggan, no_hp_pelanggan,
+           jenis_sewa, tanggal_mulai, jam_mulai,
            jam_selesai, durasi_jam, paket_label, tanggal_selesai, total_hari, total_harga, catatan)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-        (data['motor_id'], customer_id, jenis_sewa, tgl_mulai, jam_mulai_val, jam_selesai_val,
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (data['motor_id'], customer_id, data['nama'], data['no_hp'], jenis_sewa, tgl_mulai, jam_mulai_val, jam_selesai_val,
          durasi_jam_val, paket_label_val, tgl_selesai, total_hari, total_harga,
          data.get('catatan', ''))
     )
