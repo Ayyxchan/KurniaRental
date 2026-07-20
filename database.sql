@@ -62,7 +62,8 @@ INSERT INTO motors (nama_motor, merk, tahun, status, deskripsi) VALUES
 ('Honda Beat 2023', 'Honda', 2023, 'tersedia', 'Motor matic Honda Beat tahun 2023, irit dan nyaman untuk harian.'),
 ('Yamaha NMAX 2022', 'Yamaha', 2022, 'tersedia', 'Skutik premium NMAX, cocok untuk perjalanan jauh.'),
 ('Honda Vario 125 2023', 'Honda', 2023, 'tersedia', 'Vario 125 sporty dengan fitur keyless.'),
-('Yamaha Mio M3 2021', 'Yamaha', 2021, 'tersedia', 'Mio M3 ringan dan lincah untuk dalam kota.'),
+('Yamaha Mio M3 2021', 'Yamaha', 2021, 'tersedia', 'Mio M3 ringan dan lincALTER TABLE motors ADD CONSTRAINT uq_motors_plat_nomor UNIQUE (plat_nomor);
+ah untuk dalam kota.'),
 ('Honda PCX 2022', 'Honda', 2022, 'disewa', 'PCX premium, nyaman dan stylish.');
 
 USE kurnia_rental;
@@ -75,7 +76,6 @@ USE kurnia_rental;
 -- Plat nomor motor
 ALTER TABLE motors ADD COLUMN IF NOT EXISTS plat_nomor VARCHAR(20) NULL AFTER merk;
 -- Pastikan tidak ada plat nomor yang sama persis (kosong/NULL boleh lebih dari satu)
-ALTER TABLE motors ADD CONSTRAINT uq_motors_plat_nomor UNIQUE (plat_nomor);
 
 -- Password untuk login customer via email (nullable = akun Google-only)
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NULL;
