@@ -664,6 +664,9 @@ def cek_booking():
 @customer_bp.route('/customer/riwayat', methods=['GET'])
 def riwayat_customer():
     """Riwayat booking milik customer yang sedang login (dicari via email/no_hp)."""
+    from Backend.admin.bookings import auto_cancel_expired_bookings
+    auto_cancel_expired_bookings()
+
     email = normalize_customer_email(request.args.get('email', ''))
     no_hp = normalize_phone(request.args.get('no_hp', ''))
 

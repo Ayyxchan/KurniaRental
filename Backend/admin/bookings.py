@@ -11,9 +11,41 @@ TARIF_HARIAN = 50000
 DENDA_PER_JAM = 5000  # denda keterlambatan pengembalian motor, per jam kelebihan
 
 
+def auto_cancel_expired_bookings():
+    """Batalkan otomatis booking yang statusnya masih 'pending' padahal
+    jadwal mulai sewanya (tanggal + jam mulai) sudah lewat dari sekarang.
+    Kalau jam_mulai kosong (booking harian tanpa jam spesifik), dianggap
+    baru lewat kalau seluruh harinya sudah berlalu.
+    Dipanggil setiap kali daftar booking diminta, jadi tidak perlu
+    cron job/proses terjadwal terpisah."""
+    from Backend.sse import push_event
+
+    expired = db.execute_query(
+        """SELECT id FROM bookings
+           WHERE status = 'pending'
+             AND TIMESTAMP(tanggal_mulai, COALESCE(jam_mulai, '23:59:59')) < NOW()""",
+        fetch=True
+    )
+    if not expired:
+        return
+
+    db.execute_query(
+        """UPDATE bookings
+           SET status = 'dibatalkan'
+           WHERE status = 'pending'
+             AND TIMESTAMP(tanggal_mulai, COALESCE(jam_mulai, '23:59:59')) < NOW()"""
+    )
+
+    for row in expired:
+        push_event('admin', 'booking_auto_cancelled', {'booking_id': row['id']})
+        push_event('customer', 'booking_auto_cancelled', {'booking_id': row['id']})
+
+
 @bookings_bp.route('/admin/bookings', methods=['GET'])
 @login_required
 def get_bookings():
+    auto_cancel_expired_bookings()
+
     bookings = db.execute_query(
         """SELECT b.*,
                   COALESCE(m.nama_motor, 'Motor tidak ditemukan') AS nama_motor,
