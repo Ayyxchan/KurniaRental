@@ -12,33 +12,57 @@ DENDA_PER_JAM = 5000  # denda keterlambatan pengembalian motor, per jam kelebiha
 
 
 def auto_cancel_expired_bookings():
-    """Batalkan otomatis booking yang statusnya masih 'pending' padahal
-    jadwal mulai sewanya (tanggal + jam mulai) sudah lewat dari sekarang.
-    Kalau jam_mulai kosong (booking harian tanpa jam spesifik), dianggap
-    baru lewat kalau seluruh harinya sudah berlalu.
-    Dipanggil setiap kali daftar booking diminta, jadi tidak perlu
-    cron job/proses terjadwal terpisah."""
+    """Dua pengecekan otomatis, dijalankan tiap kali daftar booking diminta
+    (jadi tidak perlu cron job/proses terjadwal terpisah):
+
+    1. Booking 'pending' yang jadwal MULAI-nya sudah lewat tanpa dikonfirmasi
+       admin -> otomatis 'dibatalkan'.
+    2. Booking 'dikonfirmasi' yang jadwal SELESAI-nya sudah lewat (motor
+       seharusnya sudah dikembalikan) -> otomatis 'selesai', denda dihitung
+       otomatis pakai rumus yang sama seperti tombol "Selesai" manual.
+    """
     from Backend.sse import push_event
 
-    expired = db.execute_query(
+    # 1. Batalkan booking pending yang jadwal mulainya sudah lewat
+    expired_pending = db.execute_query(
         """SELECT id FROM bookings
            WHERE status = 'pending'
              AND TIMESTAMP(tanggal_mulai, COALESCE(jam_mulai, '23:59:59')) < NOW()""",
         fetch=True
     )
-    if not expired:
-        return
+    if expired_pending:
+        db.execute_query(
+            """UPDATE bookings
+               SET status = 'dibatalkan'
+               WHERE status = 'pending'
+                 AND TIMESTAMP(tanggal_mulai, COALESCE(jam_mulai, '23:59:59')) < NOW()"""
+        )
+        for row in expired_pending:
+            push_event('admin', 'booking_auto_cancelled', {'booking_id': row['id']})
+            push_event('customer', 'booking_auto_cancelled', {'booking_id': row['id']})
 
-    db.execute_query(
-        """UPDATE bookings
-           SET status = 'dibatalkan'
-           WHERE status = 'pending'
-             AND TIMESTAMP(tanggal_mulai, COALESCE(jam_mulai, '23:59:59')) < NOW()"""
+    # 2. Selesaikan otomatis booking dikonfirmasi yang jadwal selesainya sudah lewat,
+    #    sekalian hitung dendanya (motor dianggap belum dikembalikan sampai
+    #    admin/sistem menandainya 'selesai')
+    overdue = db.execute_query(
+        """SELECT id, tanggal_selesai, jam_selesai FROM bookings
+           WHERE status = 'dikonfirmasi'
+             AND TIMESTAMP(tanggal_selesai, COALESCE(jam_selesai, '23:59:59')) < NOW()""",
+        fetch=True
     )
-
-    for row in expired:
-        push_event('admin', 'booking_auto_cancelled', {'booking_id': row['id']})
-        push_event('customer', 'booking_auto_cancelled', {'booking_id': row['id']})
+    for row in overdue:
+        jadwal_selesai_dt = datetime.combine(
+            row['tanggal_selesai'],
+            row['jam_selesai'] or dtime(23, 59, 59)
+        )
+        telat_jam = (datetime.now() - jadwal_selesai_dt).total_seconds() / 3600
+        denda = math.ceil(telat_jam) * DENDA_PER_JAM
+        db.execute_query(
+            "UPDATE bookings SET status='selesai', denda=%s, waktu_kembali=%s WHERE id=%s",
+            (denda, datetime.now(), row['id'])
+        )
+        push_event('admin', 'booking_auto_completed', {'booking_id': row['id'], 'denda': denda})
+        push_event('customer', 'booking_auto_completed', {'booking_id': row['id'], 'denda': denda})
 
 
 @bookings_bp.route('/admin/bookings', methods=['GET'])
