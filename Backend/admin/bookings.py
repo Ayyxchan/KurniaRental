@@ -11,76 +11,16 @@ TARIF_HARIAN = 50000
 DENDA_PER_JAM = 5000  # denda keterlambatan pengembalian motor, per jam kelebihan
 
 
-def auto_cancel_expired_bookings():
-    """Dua pengecekan otomatis, dijalankan tiap kali daftar booking diminta
-    (jadi tidak perlu cron job/proses terjadwal terpisah):
-
-    1. Booking 'pending' yang jadwal MULAI-nya sudah lewat tanpa dikonfirmasi
-       admin -> otomatis 'dibatalkan'.
-    2. Booking 'dikonfirmasi' yang jadwal SELESAI-nya sudah lewat (motor
-       seharusnya sudah dikembalikan) -> otomatis 'selesai', denda dihitung
-       otomatis pakai rumus yang sama seperti tombol "Selesai" manual.
-    """
-    from Backend.sse import push_event
-
-    # 1. Batalkan booking pending yang jadwal mulainya sudah lewat
-    expired_pending = db.execute_query(
-        """SELECT id FROM bookings
-           WHERE status = 'pending'
-             AND TIMESTAMP(tanggal_mulai, COALESCE(jam_mulai, '23:59:59')) < NOW()""",
-        fetch=True
-    )
-    if expired_pending:
-        db.execute_query(
-            """UPDATE bookings
-               SET status = 'dibatalkan'
-               WHERE status = 'pending'
-                 AND TIMESTAMP(tanggal_mulai, COALESCE(jam_mulai, '23:59:59')) < NOW()"""
-        )
-        for row in expired_pending:
-            push_event('admin', 'booking_auto_cancelled', {'booking_id': row['id']})
-            push_event('customer', 'booking_auto_cancelled', {'booking_id': row['id']})
-
-    # 2. Selesaikan otomatis booking dikonfirmasi yang jadwal selesainya sudah lewat,
-    #    sekalian hitung dendanya (motor dianggap belum dikembalikan sampai
-    #    admin/sistem menandainya 'selesai')
-    overdue = db.execute_query(
-        """SELECT id, tanggal_selesai, jam_selesai FROM bookings
-           WHERE status = 'dikonfirmasi'
-             AND TIMESTAMP(tanggal_selesai, COALESCE(jam_selesai, '23:59:59')) < NOW()""",
-        fetch=True
-    )
-    for row in overdue:
-        jam_selesai = row['jam_selesai'] or dtime(23, 59, 59)
-        if hasattr(jam_selesai, 'total_seconds'):
-            # mysql-connector kadang mengembalikan timedelta untuk kolom TIME
-            total_sec = int(jam_selesai.total_seconds())
-            jam_selesai = dtime(hour=(total_sec // 3600) % 24,
-                                 minute=(total_sec // 60) % 60,
-                                 second=total_sec % 60)
-        jadwal_selesai_dt = datetime.combine(row['tanggal_selesai'], jam_selesai)
-        telat_jam = (datetime.now() - jadwal_selesai_dt).total_seconds() / 3600
-        denda = math.ceil(telat_jam) * DENDA_PER_JAM
-        db.execute_query(
-            "UPDATE bookings SET status='selesai', denda=%s, waktu_kembali=%s WHERE id=%s",
-            (denda, datetime.now(), row['id'])
-        )
-        push_event('admin', 'booking_auto_completed', {'booking_id': row['id'], 'denda': denda})
-        push_event('customer', 'booking_auto_completed', {'booking_id': row['id'], 'denda': denda})
-
-
 @bookings_bp.route('/admin/bookings', methods=['GET'])
 @login_required
 def get_bookings():
-    auto_cancel_expired_bookings()
-
     bookings = db.execute_query(
         """SELECT b.*,
                   COALESCE(m.nama_motor, 'Motor tidak ditemukan') AS nama_motor,
                   COALESCE(m.merk, '-') AS merk,
                   COALESCE(m.plat_nomor, '-') AS plat_nomor,
-                  COALESCE(c.nama, b.nama_pelanggan, 'Akun sudah dihapus') AS nama_customer,
-                  COALESCE(c.no_hp, b.no_hp_pelanggan, '-') AS no_hp
+                  COALESCE(c.nama, 'Customer tidak ditemukan') AS nama_customer,
+                  COALESCE(c.no_hp, '-') AS no_hp
            FROM bookings b
            LEFT JOIN motors m ON b.motor_id = m.id
            LEFT JOIN customers c ON b.customer_id = c.id
